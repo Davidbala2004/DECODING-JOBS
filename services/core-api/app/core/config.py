@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     SENDGRID_INBOUND_USERNAME: str | None = None
     SENDGRID_INBOUND_PASSWORD: str | None = None
 
+    # Shared secret the ingestion pipeline (scripts/fetch-real-jobs.mjs) sends
+    # as `X-Ingestion-Key` to prove it's not a random caller. Unlike the
+    # GROQ_API_KEY-style features above, these endpoints have WRITE access to
+    # the live map — unset means the endpoint refuses every request (closed
+    # by default), not "feature disabled." Generate one with
+    # `python -c "import secrets; print(secrets.token_hex(32))"`.
+    INGESTION_API_KEY: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

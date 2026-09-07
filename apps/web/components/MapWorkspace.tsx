@@ -155,7 +155,10 @@ const CompanyPin = React.memo(function CompanyPin({
   const sector = getSectorConfig(company.sector) ?? DEFAULT_SECTOR;
 
   // Resolve logo URL via local proxy (computed once)
-  const logoUrl = useMemo(() => resolveLogoUrl(company), [company.website_url, company.logo_url]);
+  const logoUrl = useMemo(
+    () => resolveLogoUrl({ website_url: company.website_url, logo_url: company.logo_url }),
+    [company.website_url, company.logo_url]
+  );
 
   // Dynamic sizing based on zoom level (snapped to avoid micro-jitter)
   const PIN_SIZE = useMemo(() => {
@@ -492,7 +495,10 @@ const CompanyGridCard = React.memo(function CompanyGridCard({
 }) {
   const sector = getSectorConfig(company.sector);
   const isHiring = company.active_job_count > 0;
-  const logoUrl = useMemo(() => resolveLogoUrl(company), [company.website_url, company.logo_url]);
+  const logoUrl = useMemo(
+    () => resolveLogoUrl({ website_url: company.website_url, logo_url: company.logo_url }),
+    [company.website_url, company.logo_url]
+  );
 
   return (
     <button

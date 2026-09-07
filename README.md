@@ -192,7 +192,7 @@ PROJECT_NAME="DECODING JOBS Core API"
 ENVIRONMENT=development
 API_V1_PREFIX=/api/v1
 DATABASE_URL=postgresql+asyncpg://decoding_admin:decoding_pass_dev@postgis:5432/decoding_jobs
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3333
 ```
 
 ### Frontend (`apps/web/.env.local`)
@@ -205,7 +205,18 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ### Personal secrets (`services/core-api/.env.local`)
 
-`services/core-api/.env` is committed (non-sensitive dev defaults only — DB password, CORS origins). Real secrets — `GROQ_API_KEY`, `SENDGRID_INBOUND_USERNAME`/`PASSWORD` — go in `services/core-api/.env.local` instead, which `infra/docker-compose.yml` loads as an optional overlay on top of `.env` and which `.gitignore` keeps out of version control.
+`services/core-api/.env` is committed (non-sensitive dev defaults only — DB password, CORS origins). Real secrets — `GROQ_API_KEY`, `SENDGRID_INBOUND_USERNAME`/`PASSWORD`, `INGESTION_API_KEY` — go in `services/core-api/.env.local` instead, which `infra/docker-compose.yml` loads as an optional overlay on top of `.env` and which `.gitignore` keeps out of version control.
+
+**`INGESTION_API_KEY` matters even for local dev**, unlike the others: `POST /companies/seed`, `/jobs/seed`, and `/jobs/expire-stale` have write access to the live map and reject every request until this is set (closed by default, not "feature disabled" like the others). Generate one and put the same value in both places it's needed:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+# → put the output in BOTH:
+#   services/core-api/.env.local   INGESTION_API_KEY=<value>
+#   scripts/.env                   INGESTION_API_KEY=<value>   (same value, scripts/fetch-real-jobs.mjs sends it as X-Ingestion-Key)
+```
+
+Restart the `core-api` container after changing `.env.local` — env vars are read once at container start (`docker restart` reuses the old environment; use `docker compose up -d core-api` from `infra/` to actually reload it).
 
 **Never put a real API key directly in `.env`, in this README, or in any other committed file.** An API key is tied to your account's billing and rate limits — a key that ends up in a public repo gets scraped by bots within minutes and either runs your quota to zero or gets flagged and revoked by the provider's own key-scanning. Everyone who runs this project gets their **own** free key:
 
@@ -285,6 +296,8 @@ Company/job data is populated via `scripts/fetch-real-jobs.mjs`, which pulls **r
 - **Greenhouse / Lever public job-board JSON** — no auth needed, real, first-party postings straight from each company's own career page (not a reseller), so no commercial-licensing concern. Board tokens drift (companies migrate ATS or rename boards) and only work for companies that use one of these two ATS providers — see `KNOWN_BOARDS` in the script for the current curated, hand-verified list. Every entry was checked against the live API (not just "does the token resolve," since a resolving token can belong to an unrelated foreign company — verify the actual job `location` fields match before trusting a hit).
 
 For cities the pipeline can't reach (most tier-2 hubs have very few companies on Greenhouse/Lever), the sustainable path is founder self-registration — see [List Your Startup](#list-your-startup-register) above.
+
+**Description cleanup**: Greenhouse's API returns job descriptions HTML-*entity*-encoded (literal `&lt;div&gt;` text, not real `<div>` tags), which a plain tag-stripping regex can't catch — the raw markup used to leak straight into the UI. `cleanJobDescription()` in the script decodes entities first, turns block-level tags into real line breaks (so paragraph/list structure survives), then strips what's left.
 
 ```bash
 cd scripts

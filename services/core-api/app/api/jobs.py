@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.security import require_ingestion_key
 from app.db.session import get_db
 from app.models.domain import Job, Company, EmploymentType, WorkMode
 from app.schemas import JobRead, JobWithCompanyRead
@@ -189,6 +190,7 @@ class JobSeedRequest(BaseModel):
     response_model=JobRead,
     status_code=status.HTTP_201_CREATED,
     summary="Seed (or refresh) a job posting from the ingestion pipeline",
+    dependencies=[Depends(require_ingestion_key)],
 )
 async def seed_job(
     payload: JobSeedRequest,
@@ -293,6 +295,7 @@ async def register_job(
 @router.post(
     "/expire-stale",
     summary="Mark ingested jobs inactive if they haven't been re-confirmed by a recent run",
+    dependencies=[Depends(require_ingestion_key)],
 )
 async def expire_stale_jobs(
     db: Annotated[AsyncSession, Depends(get_db)],

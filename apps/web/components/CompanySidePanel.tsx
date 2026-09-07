@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -240,6 +240,7 @@ export function CompanySidePanel() {
   const email = useIdentityStore((s) => s.email);
   const queryClient = useQueryClient();
 
+  const [descExpanded, setDescExpanded] = useState(false);
   const [resumeDropdownOpen, setResumeDropdownOpen] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null);
   const resumeDropdownRef = useRef<HTMLDivElement>(null);
@@ -249,7 +250,10 @@ export function CompanySidePanel() {
     queryFn: () => listResumes(email as string),
     enabled: !!email,
   });
-  const resumes: Resume[] = resumesQuery.data ?? [];
+  // Memoized so the auto-select effect below only re-runs when the actual
+  // resume list changes, not on every render (resumesQuery.data ?? [] would
+  // otherwise be a new array identity each time, before the query resolves).
+  const resumes: Resume[] = useMemo(() => resumesQuery.data ?? [], [resumesQuery.data]);
 
   useEffect(() => {
     if (resumes[0] && (selectedResumeId === null || !resumes.some((r) => r.id === selectedResumeId))) {
@@ -284,6 +288,10 @@ export function CompanySidePanel() {
       submitApplication({ ...v, userEmail: email }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
   });
+  // Destructured out so the reset effect below can depend on this specific
+  // (stable) function instead of the whole mutation object, which is a new
+  // object every render.
+  const { reset: resetApplyMutation } = applyMutation;
 
   const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set());
   const saveMutation = useMutation({
@@ -294,7 +302,30 @@ export function CompanySidePanel() {
     },
   });
 
-  useEffect(() => { applyMutation.reset(); setSavedJobIds(new Set()); }, [selectedCompanyId]);
+  // Which open role "Apply" targets — was silently hardcoded to jobs[0]
+  // before, so a company with several roles always tracked an application
+  // to whichever one happened to load first, regardless of which one the
+  // user actually meant to apply to.
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    resetApplyMutation();
+    setSavedJobIds(new Set());
+    setSelectedJobId(null);
+    setDescExpanded(false);
+  }, [selectedCompanyId, resetApplyMutation]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setRoleDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   if (selectedCompanyId === null) return <EmptyState />;
   if (companyQuery.isLoading) return <LoadingSkeleton />;
@@ -305,7 +336,9 @@ export function CompanySidePanel() {
   const pros = company.sentiment_summary?.pros ?? [];
   const cons = company.sentiment_summary?.cons ?? [];
   const hasSentiment = pros.length > 0 || cons.length > 0;
-  const primaryJob = jobs[0];
+  // Defaults to the first role, but the dropdown below lets the user pick
+  // whichever one they actually mean to apply to.
+  const primaryJob = jobs.find((j) => j.id === selectedJobId) ?? jobs[0];
   // Dynamic section numbering — skip sections with no data
   let _sec = 0;
   const hasApplied = applyMutation.isSuccess && applyMutation.data?.job_id === primaryJob?.id;
@@ -480,6 +513,49 @@ export function CompanySidePanel() {
           <h2 className="text-xs font-bold text-gray-900">Apply</h2>
         </div>
         <div className="flex flex-col gap-2">
+          {/* Role selector — only shown when there's an actual choice to make.
+              Everything below (resume attach, tailor-with-AI, submit, and the
+              Job Description section) targets whichever role is picked here. */}
+          {jobs.length > 1 && (
+            <div className="relative" ref={roleDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setRoleDropdownOpen((v) => !v)}
+                className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-all hover:border-green-200"
+              >
+                <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-gray-600">
+                  <Briefcase className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                  <span className="truncate font-semibold text-gray-800">{primaryJob?.title}</span>
+                </span>
+                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform", roleDropdownOpen && "rotate-180")} />
+              </button>
+              {roleDropdownOpen && (
+                <div
+                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+                  style={{ animation: "fadeSlideUp 0.15s ease-out" }}
+                >
+                  {jobs.map((j) => (
+                    <button
+                      key={j.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedJobId(j.id);
+                        setDescExpanded(false);
+                        setRoleDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors",
+                        j.id === primaryJob?.id ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
+                      )}
+                    >
+                      <span className="truncate">{j.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Resume selector — a real dropdown over the user's uploaded resumes */}
           {email && resumes.length > 0 ? (
             <div className="relative" ref={resumeDropdownRef}>
@@ -576,18 +652,41 @@ export function CompanySidePanel() {
         </div>
       </div>
 
-      {/* ── Section: Job Description ── */}
-      {primaryJob && (
-        <div className="rounded-xl border border-gray-100 bg-white p-3">
-          <div className="mb-2 flex items-center gap-1.5">
-            <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
-            <h2 className="text-xs font-bold text-gray-900">Job Description</h2>
+      {/* ── Section: Job Description — follows whichever role is selected
+          in Apply above, so it's never silently showing a different role's
+          description than the one you're about to apply to. Rendered with
+          real paragraph breaks (whitespace-pre-line) instead of one dense
+          blob, and collapsed by default since postings can run ~2000 chars
+          in a 380px-wide panel. ── */}
+      {primaryJob && (() => {
+        const description = primaryJob.description?.trim() || "";
+        const COLLAPSE_AT = 380;
+        const isLong = description.length > COLLAPSE_AT;
+        const shown = descExpanded || !isLong ? description : `${description.slice(0, COLLAPSE_AT).trimEnd()}…`;
+        return (
+          <div className="rounded-xl border border-gray-100 bg-white p-3">
+            <div className="mb-2 flex items-center gap-1.5">
+              <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
+              <h2 className="text-xs font-bold text-gray-900">Job Description</h2>
+              {jobs.length > 1 && (
+                <span className="ml-auto truncate text-[10px] font-semibold text-gray-400">{primaryJob.title}</span>
+              )}
+            </div>
+            <p className="whitespace-pre-line text-[11px] leading-relaxed text-gray-600">
+              {shown || "No description available."}
+            </p>
+            {isLong && (
+              <button
+                type="button"
+                onClick={() => setDescExpanded((v) => !v)}
+                className="mt-1.5 text-[10.5px] font-bold text-green-600 hover:text-green-700"
+              >
+                {descExpanded ? "Show less" : "Show more"}
+              </button>
+            )}
           </div>
-          <p className="text-[11px] leading-relaxed text-gray-500">
-            {primaryJob.description || "No description available."}
-          </p>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Bottom spacer */}
       <div className="h-2" />

@@ -27,6 +27,16 @@ const API_BASE = process.env.API_URL || "http://localhost:8000";
 const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID;
 const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY;
 
+// /companies/seed, /jobs/seed, and /jobs/expire-stale all require this header
+// now (see services/core-api/app/core/security.py) — must match that
+// service's INGESTION_API_KEY exactly.
+const INGESTION_API_KEY = process.env.INGESTION_API_KEY;
+if (!INGESTION_API_KEY) {
+  console.error("✖ INGESTION_API_KEY is not set (see scripts/.env.example) — seed/expire calls will be rejected.");
+  process.exit(1);
+}
+const INGESTION_HEADERS = { "Content-Type": "application/json", "X-Ingestion-Key": INGESTION_API_KEY };
+
 // ---------------------------------------------------------------------------
 // City coverage — all major India tech hubs.
 // ---------------------------------------------------------------------------
@@ -305,6 +315,34 @@ async function fetchAdzunaForCity(cityName) {
 // Greenhouse / Lever fetcher
 // ---------------------------------------------------------------------------
 
+const HTML_ENTITIES = {
+  "&lt;": "<", "&gt;": ">", "&amp;": "&", "&quot;": '"', "&#39;": "'",
+  "&nbsp;": " ", "&rsquo;": "’", "&lsquo;": "‘", "&rdquo;": "”", "&ldquo;": "“",
+};
+
+// Greenhouse's `content` field comes back HTML-*entity-encoded* (literal
+// "&lt;div&gt;" text, not real "<div>" tags) — a naive tag-stripping regex
+// finds nothing to strip and the raw markup shows up verbatim in the UI.
+// Decode entities first, then turn block-level tags into real line breaks
+// (so paragraphs/lists stay readable instead of collapsing into one dense
+// blob) before stripping whatever tags remain.
+function cleanJobDescription(raw) {
+  if (!raw) return "";
+  let text = raw.replace(/&[a-z#0-9]+;/gi, (m) => HTML_ENTITIES[m.toLowerCase()] ?? m);
+  text = text
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, "");
+  text = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line, i, arr) => line || (i > 0 && arr[i - 1] !== ""))
+    .join("\n")
+    .trim();
+  return text.slice(0, 2000);
+}
+
 async function fetchGreenhouseBoard(board) {
   try {
     const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${board.token}/jobs?content=true`);
@@ -312,7 +350,7 @@ async function fetchGreenhouseBoard(board) {
     const data = await res.json();
     return (data.jobs || []).map((job) => ({
       title: job.title,
-      description: (job.content || "").replace(/<[^>]+>/g, " ").slice(0, 2000),
+      description: cleanJobDescription(job.content),
       company: board.name,
       website: board.website,
       location: job.location?.name || board.city,
@@ -333,7 +371,11 @@ async function fetchLeverBoard(board) {
     const data = await res.json();
     return (data || []).map((job) => ({
       title: job.text,
-      description: (job.descriptionPlain || job.description || "").slice(0, 2000),
+      // descriptionPlain is already clean when present; the HTML fallback
+      // (some Lever boards omit descriptionPlain) needs the same cleanup.
+      description: job.descriptionPlain
+        ? job.descriptionPlain.slice(0, 2000)
+        : cleanJobDescription(job.description),
       company: board.name,
       website: board.website,
       location: job.categories?.location || board.city,
@@ -435,7 +477,7 @@ async function seedCompanies(companies) {
     try {
       const res = await fetch(`${API_BASE}/api/v1/companies/seed`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: INGESTION_HEADERS,
         body: JSON.stringify(companyPayload),
       });
       if (!res.ok) {
@@ -448,7 +490,7 @@ async function seedCompanies(companies) {
       for (const job of company.jobs.slice(0, 15)) {
         const jobRes = await fetch(`${API_BASE}/api/v1/jobs/seed`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: INGESTION_HEADERS,
           body: JSON.stringify({
             company_id: created.id,
             title: job.title,
@@ -523,7 +565,10 @@ async function main() {
 async function expireStaleJobs() {
   const days = Number(process.env.STALE_JOB_DAYS || 21);
   try {
-    const res = await fetch(`${API_BASE}/api/v1/jobs/expire-stale?days=${days}`, { method: "POST" });
+    const res = await fetch(`${API_BASE}/api/v1/jobs/expire-stale?days=${days}`, {
+      method: "POST",
+      headers: INGESTION_HEADERS,
+    });
     if (!res.ok) {
       console.error(`  ⚠ Stale-job sweep failed: ${res.status}`);
       return;

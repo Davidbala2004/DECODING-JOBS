@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import require_ingestion_key
 from app.db.session import get_db
 from app.models.domain import Company, Job
 from app.schemas import CompanyRead
@@ -282,6 +283,7 @@ class CompanySeedRequest(BaseModel):
     response_model=CompanyRead,
     status_code=status.HTTP_201_CREATED,
     summary="Seed a company from the scraper (upsert by name)",
+    dependencies=[Depends(require_ingestion_key)],
 )
 async def seed_company(
     payload: CompanySeedRequest,
