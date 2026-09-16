@@ -63,6 +63,12 @@ const CITY_CENTERS = {
   "Delhi NCR": { lat: 28.4595, lng: 77.0266 },
   Kolkata: { lat: 22.5726, lng: 88.3639 },
   Ahmedabad: { lat: 23.0225, lng: 72.5714 },
+  Coimbatore: { lat: 11.01, lng: 76.97 },
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  Madurai: { lat: 9.9252, lng: 78.1198 },
+  Kozhikode: { lat: 11.2588, lng: 75.7873 },
+  Visakhapatnam: { lat: 17.6868, lng: 83.2185 },
+  Mysuru: { lat: 12.2958, lng: 76.6394 },
 };
 
 // Haversine distance in km — used to sanity-check a geocode result against

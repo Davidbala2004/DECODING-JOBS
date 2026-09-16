@@ -51,6 +51,8 @@ export interface Job {
   // Phase 2: job source tracking.
   source: string | null;
   source_url: string | null;
+  // Functional department (Engineering, Data & AI, HR & Recruiting, etc.)
+  department: string | null;
   created_at: string;
 }
 
@@ -123,7 +125,10 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 /** Matches GET /api/v1/companies/search on services/core-api. */
 export async function searchCompaniesInBoundingBox(
   bbox: BoundingBox,
-  filters?: { sector?: string; city?: string; hiring_only?: boolean; stage?: string; area?: string; company_type?: string }
+  filters?: {
+    sector?: string; city?: string; hiring_only?: boolean; stage?: string;
+    area?: string; company_type?: string; department?: string;
+  }
 ): Promise<Company[]> {
   const params = new URLSearchParams({
     min_lat: bbox.minLat.toString(),
@@ -138,8 +143,14 @@ export async function searchCompaniesInBoundingBox(
   if (filters?.stage) params.set("stage", filters.stage);
   if (filters?.area) params.set("area", filters.area);
   if (filters?.company_type) params.set("company_type", filters.company_type);
+  if (filters?.department) params.set("department", filters.department);
 
   return fetchJson<Company[]>(`/api/v1/companies/search?${params.toString()}`);
+}
+
+/** Matches GET /api/v1/jobs/departments on services/core-api. */
+export async function getDepartments(): Promise<{ department: string; count: number }[]> {
+  return fetchJson<{ department: string; count: number }[]>("/api/v1/jobs/departments");
 }
 
 /** Matches GET /api/v1/companies/sectors on services/core-api. */
@@ -244,6 +255,7 @@ export async function submitApplication(params: {
 export interface IdentifyResult {
   id: number;
   email: string;
+  full_name: string | null;
   forwarding_token: string | null;
   /** u-{token}@{domain}, or null if email auto-tracking isn't configured yet. */
   forwarding_address: string | null;
@@ -252,6 +264,136 @@ export interface IdentifyResult {
 /** Matches POST /api/v1/users/identify on services/core-api — Phase 1's password-less sign-in. */
 export async function identify(email: string): Promise<IdentifyResult> {
   return postJson<IdentifyResult>("/api/v1/users/identify", { email });
+}
+
+/** Matches POST /api/v1/users/google-auth — verifies the Google ID token
+ * server-side, then get-or-creates the same User row /identify would. */
+export async function googleAuth(credential: string): Promise<IdentifyResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/google-auth`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credential }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Google sign-in failed (${response.status})`);
+  }
+  return response.json() as Promise<IdentifyResult>;
+}
+
+export interface UserPreferences {
+  target_roles: string[];
+  preferred_cities: string[];
+  preferred_work_mode: string | null;
+  min_salary: number | null;
+  skills: string[];
+  experience_years: number | null;
+  notice_period: string | null;
+  github_url: string | null;
+  linkedin_url: string | null;
+  leetcode_url: string | null;
+  github_verified: boolean;
+  linkedin_verified: boolean;
+  leetcode_verified: boolean;
+  profile_visible_to_recruiters: boolean;
+}
+
+/** Matches GET /api/v1/users/preferences on services/core-api. */
+export async function getPreferences(email: string): Promise<UserPreferences> {
+  const params = new URLSearchParams({ email });
+  return fetchJson<UserPreferences>(`/api/v1/users/preferences?${params.toString()}`);
+}
+
+/** Matches PUT /api/v1/users/preferences on services/core-api. */
+export async function updatePreferences(params: {
+  email: string;
+  targetRoles?: string[];
+  preferredCities?: string[];
+  preferredWorkMode?: string | null;
+  minSalary?: number | null;
+  skills?: string[];
+  experienceYears?: number | null;
+  noticePeriod?: string | null;
+  githubUrl?: string | null;
+  linkedinUrl?: string | null;
+  leetcodeUrl?: string | null;
+  profileVisibleToRecruiters?: boolean;
+}): Promise<UserPreferences> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/preferences`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: params.email,
+      target_roles: params.targetRoles,
+      preferred_cities: params.preferredCities,
+      preferred_work_mode: params.preferredWorkMode,
+      min_salary: params.minSalary,
+      skills: params.skills,
+      experience_years: params.experienceYears,
+      notice_period: params.noticePeriod,
+      github_url: params.githubUrl,
+      linkedin_url: params.linkedinUrl,
+      leetcode_url: params.leetcodeUrl,
+      profile_visible_to_recruiters: params.profileVisibleToRecruiters,
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Saving preferences failed (${response.status})`);
+  }
+  return response.json() as Promise<UserPreferences>;
+}
+
+export interface SavedSearchFilters {
+  city?: string;
+  sector?: string;
+  stage?: string;
+  company_type?: string;
+  area?: string;
+  department?: string;
+  hiring_only?: boolean;
+  q?: string;
+}
+
+export interface SavedSearch {
+  id: number;
+  label: string;
+  filters: SavedSearchFilters;
+  email_alerts_enabled: boolean;
+  last_checked_at: string | null;
+  created_at: string;
+}
+
+/** Matches POST /api/v1/users/saved-searches — save the current map filters as a shortcut. */
+export async function createSavedSearch(params: {
+  email: string;
+  label: string;
+  filters: SavedSearchFilters;
+  emailAlertsEnabled?: boolean;
+}): Promise<SavedSearch> {
+  return postJson<SavedSearch>("/api/v1/users/saved-searches", {
+    email: params.email,
+    label: params.label,
+    filters: params.filters,
+    email_alerts_enabled: params.emailAlertsEnabled ?? false,
+  });
+}
+
+/** Matches GET /api/v1/users/saved-searches on services/core-api. */
+export async function listSavedSearches(email: string): Promise<SavedSearch[]> {
+  const params = new URLSearchParams({ email });
+  return fetchJson<SavedSearch[]>(`/api/v1/users/saved-searches?${params.toString()}`);
+}
+
+/** Matches DELETE /api/v1/users/saved-searches/{id} on services/core-api. */
+export async function deleteSavedSearch(params: { id: number; email: string }): Promise<void> {
+  const query = new URLSearchParams({ email: params.email });
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/saved-searches/${params.id}?${query.toString()}`, {
+    method: "DELETE",
+  });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Deleting saved search failed (${response.status})`);
+  }
 }
 
 /** Matches GET /api/v1/applications/board on services/core-api — the Kanban tracker's cards. */
@@ -532,4 +674,98 @@ export async function registerJob(params: JobRegisterParams): Promise<Job> {
     throw new Error(body?.detail || `Job posting failed (${response.status})`);
   }
   return response.json() as Promise<Job>;
+}
+
+// --- Recruiter candidate search ---
+
+export interface RecruiterIdentity {
+  company_id: number;
+  company_name: string;
+}
+
+/** Matches POST /api/v1/recruiters/identify on services/core-api. */
+export async function recruiterIdentify(email: string): Promise<RecruiterIdentity> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/recruiters/identify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Verification failed (${response.status})`);
+  }
+  return response.json() as Promise<RecruiterIdentity>;
+}
+
+export interface CandidateSearchResult {
+  id: number;
+  target_roles: string[];
+  preferred_cities: string[];
+  preferred_work_mode: string | null;
+  experience_years: number | null;
+  notice_period: string | null;
+  skills: string[];
+  ats_score: number | null;
+  github_verified: boolean;
+  linkedin_verified: boolean;
+  leetcode_verified: boolean;
+  already_unlocked: boolean;
+}
+
+export interface CandidateProfile {
+  id: number;
+  full_name: string;
+  email: string;
+  target_roles: string[];
+  preferred_cities: string[];
+  preferred_work_mode: string | null;
+  experience_years: number | null;
+  notice_period: string | null;
+  skills: string[];
+  github_url: string | null;
+  linkedin_url: string | null;
+  leetcode_url: string | null;
+  github_verified: boolean;
+  linkedin_verified: boolean;
+  leetcode_verified: boolean;
+  resume_id: number | null;
+  ats_score: number | null;
+  ats_summary: string | null;
+  ats_suggestions: { strengths?: string[]; weaknesses?: string[]; suggestions?: string[]; missing_keywords?: string[] } | null;
+}
+
+/** Matches GET /api/v1/recruiters/candidates on services/core-api. */
+export async function searchCandidates(params: {
+  recruiterEmail: string;
+  role?: string;
+  city?: string;
+  workMode?: string;
+  experienceMin?: number;
+  experienceMax?: number;
+  noticePeriod?: string;
+  verifiedOnly?: boolean;
+}): Promise<CandidateSearchResult[]> {
+  const query = new URLSearchParams({ recruiter_email: params.recruiterEmail });
+  if (params.role) query.set("role", params.role);
+  if (params.city) query.set("city", params.city);
+  if (params.workMode) query.set("work_mode", params.workMode);
+  if (params.experienceMin !== undefined) query.set("experience_min", String(params.experienceMin));
+  if (params.experienceMax !== undefined) query.set("experience_max", String(params.experienceMax));
+  if (params.noticePeriod) query.set("notice_period", params.noticePeriod);
+  if (params.verifiedOnly) query.set("verified_only", "true");
+  return fetchJson<CandidateSearchResult[]>(`/api/v1/recruiters/candidates?${query.toString()}`);
+}
+
+/** Matches POST /api/v1/recruiters/candidates/{id}/unlock on services/core-api. */
+export async function unlockCandidate(params: { candidateId: number; recruiterEmail: string }): Promise<CandidateProfile> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/recruiters/candidates/${params.candidateId}/unlock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: params.recruiterEmail }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Unlock failed (${response.status})`);
+  }
+  return response.json() as Promise<CandidateProfile>;
 }

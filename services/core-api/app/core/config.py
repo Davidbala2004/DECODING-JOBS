@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # route's target URL. Required once INBOUND_EMAIL_DOMAIN is set.
     SENDGRID_INBOUND_USERNAME: str | None = None
     SENDGRID_INBOUND_PASSWORD: str | None = None
+    # SendGrid *send* API key (separate product/credential from Inbound
+    # Parse above) — needed to actually email saved-search job alerts. Unset
+    # means alert emails are logged, not sent — see services/sendgrid_client.py.
+    SENDGRID_API_KEY: str | None = None
+    SENDGRID_FROM_EMAIL: str | None = None
 
     # Shared secret the ingestion pipeline (scripts/fetch-real-jobs.mjs) sends
     # as `X-Ingestion-Key` to prove it's not a random caller. Unlike the
@@ -59,6 +64,13 @@ class Settings(BaseSettings):
     # by default), not "feature disabled." Generate one with
     # `python -c "import secrets; print(secrets.token_hex(32))"`.
     INGESTION_API_KEY: str | None = None
+
+    # Google Sign-In — the OAuth Client ID (not secret; it's meant to be
+    # public, the frontend needs it in the browser too). Verifying an ID
+    # token needs only this + Google's public keys, no client secret.
+    # Unset means /users/google-auth returns a "not configured" error
+    # instead of a 500.
+    GOOGLE_CLIENT_ID: str | None = None
 
 
 @lru_cache

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Map, Marker, type MapRef } from "react-map-gl/maplibre";
+import { Map, Marker, Popup, type MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import Supercluster, { type ClusterFeature, type PointFeature } from "supercluster";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -27,19 +28,26 @@ import {
   Filter,
   BriefcaseBusiness,
   ChevronDown,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { SavedSearchesButton } from "@/components/SavedSearchesButton";
+import { useIdentityStore } from "@/lib/identityStore";
+import type { SavedSearchFilters } from "@/lib/api";
 import {
   searchCompaniesInBoundingBox,
   searchJobs,
   getJobSuggestions,
+  getPreferences,
   getSectors,
   getCities,
   getStages,
   getAreas,
   getTypes,
+  getDepartments,
   type BoundingBox,
   type Company,
 } from "@/lib/api";
@@ -117,6 +125,8 @@ const CITY_CENTERS: Record<string, CityConfig> = {
   Thiruvananthapuram: { longitude: 76.9366, latitude: 8.5241, zoom: 12 },
   Madurai: { longitude: 78.1198, latitude: 9.9252, zoom: 13 },
   Kozhikode: { longitude: 75.7873, latitude: 11.2588, zoom: 13 },
+  Visakhapatnam: { longitude: 83.2185, latitude: 17.6868, zoom: 12 },
+  Mysuru: { longitude: 76.6394, latitude: 12.2958, zoom: 12 },
   Mumbai: { longitude: 72.8777, latitude: 19.076, zoom: 11 },
   Pune: { longitude: 73.8567, latitude: 18.5204, zoom: 11 },
   "Delhi NCR": { longitude: 77.0266, latitude: 28.4595, zoom: 10 },
@@ -457,6 +467,58 @@ const CityPin = React.memo(function CityPin({
 });
 
 // ---------------------------------------------------------------------------
+// Sub-city cluster pin — a small teardrop marker for a tight group of nearby
+// companies at street/neighborhood level. Distinct from CityPin (which is
+// deliberately number-free — it's a whole city's aggregate) because a
+// cluster here is a "zoom in for detail" affordance, the same role a count
+// badge plays on every mainstream clustering map (Google Maps, Mapbox).
+// Without this, every company in view renders as its own animated DOM pin
+// with no limit — fine at ~100 companies, real jank at the hundreds a wider
+// data source (Adzuna, self-registration at scale) can add per city.
+// ---------------------------------------------------------------------------
+const ClusterPin = React.memo(function ClusterPin({
+  count, hiringCount, onClick,
+}: {
+  count: number; hiringCount: number; onClick: () => void;
+}) {
+  const hasHiring = hiringCount > 0;
+  const size = 30 + Math.min(count, 60) / 60 * 12; // 30–42px, gently scales with size
+
+  return (
+    <div className="relative flex flex-col items-center cursor-pointer" onClick={onClick}>
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: size, height: size, animation: "pinBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}
+      >
+        {hasHiring && (
+          <span
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{ border: "2px solid #22c55e", animation: "ping 2.2s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.4 }}
+          />
+        )}
+        <div
+          className="absolute inset-0 rounded-[50%_50%_50%_0]"
+          style={{
+            transform: "rotate(-45deg)",
+            background: hasHiring
+              ? "linear-gradient(135deg, #4ade80 0%, #16a34a 55%, #047857 100%)"
+              : "linear-gradient(135deg, #64748b 0%, #334155 55%, #1e293b 100%)",
+            boxShadow: "0 6px 14px -4px rgba(0,0,0,0.35)",
+          }}
+        />
+        <span className="relative font-extrabold text-white" style={{ fontSize: size * 0.34 }}>
+          {count}
+        </span>
+      </div>
+      <div
+        className="rounded-[50%] bg-black/25"
+        style={{ width: size * 0.5, height: size * 0.13, marginTop: -2, filter: "blur(2px)" }}
+      />
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Small filter-panel helpers — active-filter chip and empty-facet hint.
 // ---------------------------------------------------------------------------
 
@@ -625,6 +687,7 @@ export function MapWorkspace() {
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState("Bengaluru");
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [hiringOnly, setHiringOnly] = useState(false);
@@ -634,15 +697,57 @@ export function MapWorkspace() {
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
   const [zoom, setZoom] = useState(6);
   const [viewMode, setViewMode] = useState<"map" | "grid">("map");
+  // A single click on a cluster shows every company inside it as a pickable
+  // list, right there — no repeated click-to-zoom-to-cluster-again cycle to
+  // drill down to an individual company.
+  const [openClusterId, setOpenClusterId] = useState<number | null>(null);
+  const [forYouOnly, setForYouOnly] = useState(false);
+  const appliedPreferredCity = useRef(false);
 
   const selectedCompanyId = useMapSelectionStore((s) => s.selectedCompanyId);
   const setSelectedCompanyId = useMapSelectionStore((s) => s.setSelectedCompanyId);
+
+  const identityEmail = useIdentityStore((s) => s.email);
+  const { data: preferences } = useQuery({
+    queryKey: ["preferences", identityEmail],
+    queryFn: () => getPreferences(identityEmail as string),
+    enabled: !!identityEmail,
+  });
+
+  // Default the city to the signed-in user's top preferred city, once —
+  // after that, whatever the user picks in the dropdown wins.
+  useEffect(() => {
+    if (appliedPreferredCity.current) return;
+    if (preferences?.preferred_cities?.[0]) {
+      appliedPreferredCity.current = true;
+      setSelectedCity(preferences.preferred_cities[0]);
+    }
+  }, [preferences]);
+
+  // "For You" — highlights companies with a job matching any of the user's
+  // target roles, reusing the same per-role job search the map's own search
+  // bar uses (jobs/search is a single-phrase ILIKE, so target roles are
+  // searched one at a time and merged rather than joined into one query).
+  const targetRoles = preferences?.target_roles?.slice(0, 3) ?? [];
+  const { data: forYouResults } = useQuery({
+    queryKey: ["forYouJobSearch", targetRoles, selectedCity],
+    queryFn: async () => {
+      const results = await Promise.all(targetRoles.map((role) => searchJobs(role, selectedCity)));
+      return results.flat();
+    },
+    enabled: forYouOnly && targetRoles.length > 0,
+  });
+  const forYouCompanyIds = useMemo(() => {
+    if (!forYouResults) return null;
+    return new Set(forYouResults.map((r) => r.company_id));
+  }, [forYouResults]);
 
   const { data: sectors } = useQuery({ queryKey: ["sectors", selectedCity], queryFn: () => getSectors(selectedCity) });
   const { data: cities } = useQuery({ queryKey: ["cities"], queryFn: getCities });
   const { data: stages } = useQuery({ queryKey: ["stages", selectedCity], queryFn: () => getStages(selectedCity) });
   const { data: areas } = useQuery({ queryKey: ["areas", selectedCity], queryFn: () => getAreas(selectedCity) });
   const { data: types } = useQuery({ queryKey: ["types", selectedCity], queryFn: () => getTypes(selectedCity) });
+  const { data: departments } = useQuery({ queryKey: ["departments"], queryFn: getDepartments });
 
   const updateBoundsFromMap = useCallback(() => {
     const map = mapRef.current;
@@ -685,7 +790,7 @@ export function MapWorkspace() {
   }, [selectedCity]);
 
   const { data: companies, isLoading, isError } = useQuery({
-    queryKey: ["companies", "search", bbox, selectedSector, selectedCity, hiringOnly, selectedStage, selectedArea, selectedType],
+    queryKey: ["companies", "search", bbox, selectedSector, selectedCity, hiringOnly, selectedStage, selectedArea, selectedType, selectedDepartment],
     queryFn: () =>
       searchCompaniesInBoundingBox(bbox as BoundingBox, {
         sector: selectedSector || undefined,
@@ -694,6 +799,7 @@ export function MapWorkspace() {
         stage: selectedStage || undefined,
         area: selectedArea || undefined,
         company_type: selectedType || undefined,
+        department: selectedDepartment || undefined,
       }),
     enabled: bbox !== null,
     placeholderData: keepPreviousData,
@@ -761,12 +867,41 @@ export function MapWorkspace() {
 
   // Active facet filters (Type/Stage/Area/Sector) — city + hiring toggle have
   // their own dedicated controls, so they're not counted as "filters" here.
-  const activeFilterCount = [selectedType, selectedStage, selectedArea, selectedSector].filter(Boolean).length;
+  const activeFilterCount = [selectedType, selectedStage, selectedArea, selectedSector, selectedDepartment].filter(Boolean).length;
   const clearAllFilters = useCallback(() => {
     setSelectedType(null);
     setSelectedStage(null);
     setSelectedArea(null);
     setSelectedSector(null);
+    setSelectedDepartment(null);
+  }, []);
+
+  // Current filter combo, shaped to match what a saved search stores/matches
+  // against on the backend (see app/api/alerts.py `_matches_filters`).
+  const currentFilters: SavedSearchFilters = useMemo(
+    () => ({
+      city: selectedCity || undefined,
+      sector: selectedSector || undefined,
+      stage: selectedStage || undefined,
+      company_type: selectedType || undefined,
+      area: selectedArea || undefined,
+      department: selectedDepartment || undefined,
+      hiring_only: hiringOnly || undefined,
+      q: searchQuery || undefined,
+    }),
+    [selectedCity, selectedSector, selectedStage, selectedType, selectedArea, selectedDepartment, hiringOnly, searchQuery]
+  );
+
+  const applySavedSearch = useCallback((filters: SavedSearchFilters) => {
+    if (filters.city) setSelectedCity(filters.city);
+    setSelectedSector(filters.sector ?? null);
+    setSelectedStage(filters.stage ?? null);
+    setSelectedType(filters.company_type ?? null);
+    setSelectedArea(filters.area ?? null);
+    setSelectedDepartment(filters.department ?? null);
+    setHiringOnly(!!filters.hiring_only);
+    setSearchValue(filters.q ?? "");
+    setSearchQuery(filters.q ?? "");
   }, []);
 
   // Get company IDs that match job search
@@ -776,13 +911,56 @@ export function MapWorkspace() {
   }, [jobSearchResults, searchQuery]);
 
   // Filter companies — show all when no search, only matching when searching
+  // or "For You" is on (matched against the user's saved target roles).
   const filteredCompanies = useMemo(() => {
     if (!companies) return undefined;
-    if (!searchQuery || !jobSearchCompanyIds) return companies;
-    return companies.filter((c) => jobSearchCompanyIds.has(c.id));
-  }, [companies, searchQuery, jobSearchCompanyIds]);
+    let result = companies;
+    if (searchQuery && jobSearchCompanyIds) {
+      result = result.filter((c) => jobSearchCompanyIds.has(c.id));
+    }
+    if (forYouOnly && forYouCompanyIds) {
+      result = result.filter((c) => forYouCompanyIds.has(c.id));
+    }
+    return result;
+  }, [companies, searchQuery, jobSearchCompanyIds, forYouOnly, forYouCompanyIds]);
 
-  // No clustering — render all pins directly
+  // Cluster nearby companies at street/neighborhood zoom so a dense area
+  // (or a much larger imported dataset) renders as a handful of pins
+  // instead of one animated DOM marker per company. maxZoom=16 means once
+  // you're zoomed in close, every pin is guaranteed individual again.
+  type CompanyClusterProps = { companyId: number; activeJobCount: number };
+  const clusterIndex = useMemo(() => {
+    const index = new Supercluster<CompanyClusterProps, { hiringCount: number }>({
+      radius: 55,
+      maxZoom: 16,
+      // 4 or fewer nearby companies show as individual pins directly —
+      // only a genuinely dense group (5+) collapses into a cluster bubble.
+      minPoints: 5,
+      map: (props) => ({ hiringCount: props.activeJobCount > 0 ? 1 : 0 }),
+      reduce: (acc, props) => { acc.hiringCount += props.hiringCount; },
+    });
+    const points: PointFeature<CompanyClusterProps>[] = (filteredCompanies ?? []).map((c) => ({
+      type: "Feature",
+      properties: { companyId: c.id, activeJobCount: c.active_job_count },
+      geometry: { type: "Point", coordinates: [c.longitude, c.latitude] },
+    }));
+    index.load(points);
+    return index;
+  }, [filteredCompanies]);
+
+  const companiesById = useMemo(
+    // globalThis.Map, not the react-map-gl <Map> component imported above.
+    () => new globalThis.Map((filteredCompanies ?? []).map((c) => [c.id, c])),
+    [filteredCompanies]
+  );
+
+  const mapClusters = useMemo(() => {
+    if (!bbox) return [];
+    return clusterIndex.getClusters(
+      [bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat],
+      Math.round(zoom)
+    );
+  }, [clusterIndex, bbox, zoom]);
 
   const hiringCount = filteredCompanies?.filter((c) => c.active_job_count > 0).length ?? 0;
   const totalCount = filteredCompanies?.length ?? 0;
@@ -823,6 +1001,18 @@ export function MapWorkspace() {
           0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.28; }
           50% { transform: translateX(-50%) scale(0.8); opacity: 0.16; }
         }
+        /* Strip MapLibre's default popup chrome (padding/shadow/max-width)
+           so the cluster-preview list's own styling shows cleanly instead
+           of being double-boxed. */
+        .cluster-preview-popup .maplibregl-popup-content {
+          padding: 0;
+          border-radius: 0.75rem;
+          box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.25);
+          overflow: hidden;
+        }
+        .cluster-preview-popup .maplibregl-popup-tip {
+          border-top-color: white;
+        }
       `}</style>
 
       {viewMode === "grid" && (
@@ -846,7 +1036,7 @@ export function MapWorkspace() {
         onLoad={updateBoundsFromMap}
         onMoveEnd={updateBoundsFromMap}
         onZoom={() => { if (mapRef.current) setZoom(mapRef.current.getZoom()); }}
-        onClick={() => setSelectedCompanyId(null)}
+        onClick={() => { setSelectedCompanyId(null); setOpenClusterId(null); }}
         attributionControl={false}
       >
         {/* City-level pins (zoomed out) */}
@@ -880,29 +1070,129 @@ export function MapWorkspace() {
           );
         })}
 
-        {/* Company-level pins (zoomed in) */}
-        {!showCityPins && filteredCompanies?.map((company) => (
-          <Marker
-            key={company.id}
-            longitude={company.longitude}
-            latitude={company.latitude}
-            anchor="bottom"
-            onClick={(e) => {
-              e.originalEvent.stopPropagation();
-              setSelectedCompanyId(company.id);
-            }}
-          >
-            <CompanyPin
-              company={company}
-              isSelected={company.id === selectedCompanyId}
-              isHovered={company.id === hoveredId}
-              zoom={zoom}
-              onClick={() => setSelectedCompanyId(company.id)}
-              onHover={() => setHoveredId(company.id)}
-              onLeave={() => setHoveredId(null)}
-            />
-          </Marker>
-        ))}
+        {/* Company-level pins (zoomed in) — clustered when several
+            companies sit close together, individual pins otherwise. */}
+        {!showCityPins && mapClusters.map((feature) => {
+          // GeoJSON.Position types as number[] (unknown length) — supercluster
+          // always emits exactly [lng, lat] pairs for a Point geometry.
+          const [longitude, latitude] = feature.geometry.coordinates as [number, number];
+
+          if ((feature.properties as { cluster?: boolean }).cluster) {
+            const clusterFeature = feature as ClusterFeature<{ hiringCount: number }>;
+            const clusterId = clusterFeature.properties.cluster_id;
+            return (
+              <Marker key={`cluster-${clusterId}`} longitude={longitude} latitude={latitude} anchor="bottom">
+                <ClusterPin
+                  count={clusterFeature.properties.point_count}
+                  hiringCount={clusterFeature.properties.hiringCount}
+                  onClick={() => setOpenClusterId(clusterId)}
+                />
+              </Marker>
+            );
+          }
+
+          const company = companiesById.get((feature.properties as CompanyClusterProps).companyId);
+          if (!company) return null;
+          return (
+            <Marker
+              key={company.id}
+              longitude={company.longitude}
+              latitude={company.latitude}
+              anchor="bottom"
+              onClick={(e) => {
+                e.originalEvent.stopPropagation();
+                setSelectedCompanyId(company.id);
+              }}
+            >
+              <CompanyPin
+                company={company}
+                isSelected={company.id === selectedCompanyId}
+                isHovered={company.id === hoveredId}
+                zoom={zoom}
+                onClick={() => setSelectedCompanyId(company.id)}
+                onHover={() => setHoveredId(company.id)}
+                onLeave={() => setHoveredId(null)}
+              />
+            </Marker>
+          );
+        })}
+
+        {/* Cluster preview popup — click a cluster once, pick a company
+            straight from the list, done. No zoom-click-zoom-click cycle. */}
+        {openClusterId !== null && (() => {
+          const clusterFeature = mapClusters.find(
+            (f) => (f.properties as { cluster?: boolean }).cluster
+              && (f as ClusterFeature<{ hiringCount: number }>).properties.cluster_id === openClusterId
+          );
+          if (!clusterFeature) return null;
+          const [lng, lat] = clusterFeature.geometry.coordinates as [number, number];
+          const leaves = clusterIndex.getLeaves(openClusterId, 50);
+          const totalCount = (clusterFeature as ClusterFeature<{ hiringCount: number }>).properties.point_count;
+
+          return (
+            <Popup
+              longitude={lng}
+              latitude={lat}
+              anchor="bottom"
+              offset={16}
+              closeButton={false}
+              onClose={() => setOpenClusterId(null)}
+              className="cluster-preview-popup"
+            >
+              <div className="scroll-thin flex max-h-72 w-64 flex-col overflow-y-auto rounded-xl">
+                <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2">
+                  <span className="text-[11px] font-bold text-gray-800">{totalCount} companies here</span>
+                  <button
+                    type="button"
+                    onClick={() => setOpenClusterId(null)}
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1 p-1.5">
+                  {leaves.map((leaf) => {
+                    const company = companiesById.get((leaf.properties as CompanyClusterProps).companyId);
+                    if (!company) return null;
+                    const sector = getSectorConfig(company.sector);
+                    return (
+                      <button
+                        key={company.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompanyId(company.id);
+                          setOpenClusterId(null);
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-green-50"
+                      >
+                        <div
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
+                          style={{ background: sector.color }}
+                        >
+                          {getInitials(company.name)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11.5px] font-semibold text-gray-800">{company.name}</p>
+                          <p className="truncate text-[9.5px] text-gray-400">{company.area ? `${company.area}, ` : ""}{company.city}</p>
+                        </div>
+                        {company.active_job_count > 0 && (
+                          <span className="shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">
+                            {company.active_job_count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {totalCount > leaves.length && (
+                    <p className="px-2 py-1 text-center text-[10px] text-gray-400">
+                      +{totalCount - leaves.length} more — zoom in to see all
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Popup>
+          );
+        })()}
       </Map>
 
       {/* ── Top toolbar ── */}
@@ -1131,6 +1421,25 @@ export function MapWorkspace() {
           )}
         </button>
 
+        {targetRoles.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setForYouOnly((v) => !v)}
+            title={`Match your target roles: ${targetRoles.join(", ")}`}
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold shadow-lg transition-all duration-200",
+              forYouOnly
+                ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/25"
+                : "bg-white text-gray-600 hover:bg-green-50 hover:text-green-700"
+            )}
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">For You</span>
+          </button>
+        )}
+
+        <SavedSearchesButton filters={currentFilters} onApply={applySavedSearch} />
+
         {/* Status */}
         {isLoading && (
           <div className="hidden items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-medium text-gray-500 shadow-lg sm:flex">
@@ -1254,6 +1563,9 @@ export function MapWorkspace() {
             {selectedSector && (
               <FilterChip label={selectedSector} onRemove={() => setSelectedSector(null)} />
             )}
+            {selectedDepartment && (
+              <FilterChip label={selectedDepartment} onRemove={() => setSelectedDepartment(null)} />
+            )}
           </div>
         )}
 
@@ -1367,6 +1679,37 @@ export function MapWorkspace() {
               );
             })}
             {sectors?.length === 0 && <EmptyFacetHint text="No sector data for this city yet" />}
+          </div>
+        </div>
+
+        {/* Department — filters by what kind of role a company is hiring
+            for (Engineering, Data & AI, HR & Recruiting, etc.), not the
+            company's industry. */}
+        <div className="border-t border-gray-50 px-3 py-3">
+          <span className="px-1 text-[10px] font-bold uppercase tracking-widest text-green-500">Hiring for</span>
+          <div className="mt-1.5 flex flex-col gap-0.5">
+            <button type="button" onClick={() => setSelectedDepartment(null)}
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                selectedDepartment === null ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+              )}>
+              <Layers className="h-3.5 w-3.5" />
+              All departments
+            </button>
+            {departments?.map((d) => {
+              const active = selectedDepartment === d.department;
+              return (
+                <button key={d.department} type="button" onClick={() => setSelectedDepartment(active ? null : d.department)}
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                    active ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
+                  )}>
+                  <span className="flex-1 text-left">{d.department}</span>
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    active ? "bg-white/20" : "bg-gray-100 text-gray-500"
+                  )}>{d.count}</span>
+                </button>
+              );
+            })}
+            {departments?.length === 0 && <EmptyFacetHint text="No department data yet" />}
           </div>
         </div>
       </div>

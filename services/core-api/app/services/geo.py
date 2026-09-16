@@ -22,6 +22,8 @@ CITY_CENTERS: dict[str, tuple[float, float]] = {
     "Delhi NCR": (28.4595, 77.0266),
     "Kolkata": (22.5726, 88.3639),
     "Ahmedabad": (23.0225, 72.5714),
+    "Visakhapatnam": (17.6868, 83.2185),
+    "Mysuru": (12.2958, 76.6394),
 }
 
 DEFAULT_CITY = "Bengaluru"

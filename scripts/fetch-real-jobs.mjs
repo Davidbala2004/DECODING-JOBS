@@ -51,6 +51,12 @@ const CITY_CONFIG = {
   "Delhi NCR": { adzunaWhere: "Gurgaon", cityCenter: { lat: 28.4595, lng: 77.0266 } },
   Kolkata: { adzunaWhere: "Kolkata", cityCenter: { lat: 22.5726, lng: 88.3639 } },
   Ahmedabad: { adzunaWhere: "Ahmedabad", cityCenter: { lat: 23.0225, lng: 72.5714 } },
+  Coimbatore: { adzunaWhere: "Coimbatore", cityCenter: { lat: 11.01, lng: 76.97 } },
+  Thiruvananthapuram: { adzunaWhere: "Thiruvananthapuram", cityCenter: { lat: 8.5241, lng: 76.9366 } },
+  Madurai: { adzunaWhere: "Madurai", cityCenter: { lat: 9.9252, lng: 78.1198 } },
+  Kozhikode: { adzunaWhere: "Kozhikode", cityCenter: { lat: 11.2588, lng: 75.7873 } },
+  Visakhapatnam: { adzunaWhere: "Visakhapatnam", cityCenter: { lat: 17.6868, lng: 83.2185 } },
+  Mysuru: { adzunaWhere: "Mysore", cityCenter: { lat: 12.2958, lng: 76.6394 } },
 };
 
 // Broad coverage across tech disciplines — not just SDE roles — so the map
@@ -404,11 +410,121 @@ async function fetchKnownBoards(cityFilter) {
 // Group raw jobs by company, geocode, and seed via the core-api.
 // ---------------------------------------------------------------------------
 
+// Adzuna aggregates postings from staffing/recruitment agencies alongside
+// real direct employers — a search for "Software Engineer" in Bengaluru
+// returns both "ABB" (real) and "Artech L.L.C." / "Petals Careers Private
+// Limited" (staffing agencies with no real office relevant to a map). This
+// app's whole premise is real, verifiable companies, so agencies are
+// filtered out rather than shown as if they were employers.
+const STAFFING_AGENCY_KEYWORDS = [
+  "staffing", "recruit", "career", "consultanc", "manpower", "outsourc",
+  "workforce", "talent", "hr solutions", "hr services", "people solutions",
+  "human resource", "search partners", "executive search", "placement",
+  "hiring solutions", "resource solutions", "people solution", "sourcing",
+  "quality hr",
+];
+// A short list of specific, unambiguous staffing brands that don't contain
+// any of the generic keywords above but are still well-known pure agencies
+// (not real employers), so a keyword match alone wouldn't catch them.
+const STAFFING_AGENCY_NAMES = [
+  "artech", "randstad", "teamlease", "quess", "manpowergroup", "adecco",
+  "kelly services", "zyoin", "collabera", "mastech digital",
+  "domnic lewis", "scaleneworks", "acara solutions", "allegis global",
+  "gipfel & schnell", "advent global solutions", "first job consulting",
+  "hunarstreet", "true blue hr", "unison consulting", "people first consultants",
+  "amaris consulting", "skillwize", "kaapro",
+];
+
+// India's major IT-services giants routinely have "Consultancy"/"Services"/
+// "Solutions" in their *official* names (Tata Consultancy Services being the
+// textbook case) and would otherwise false-positive on the generic keywords
+// above — they're real, massive employers, not staffing agencies, so they're
+// checked and exempted before any keyword match runs.
+const LEGITIMATE_EMPLOYER_ALLOWLIST = [
+  "tata consultancy services", "cognizant", "infosys", "capgemini",
+  "accenture", "wipro", "hcltech", "hcl technologies", "tech mahindra",
+  "ltimindtree", "mindtree", "l&t infotech", "l&t technology services",
+  "circor", "air distribution technologies", "circana", "securonix", "colruyt",
+];
+
+function isLikelyStaffingAgency(name) {
+  const lower = name.toLowerCase();
+  if (LEGITIMATE_EMPLOYER_ALLOWLIST.some((n) => lower.includes(n))) return false;
+  return STAFFING_AGENCY_KEYWORDS.some((kw) => lower.includes(kw))
+    || STAFFING_AGENCY_NAMES.some((n) => lower === n || lower.startsWith(`${n} `));
+}
+
+// This is a tech job board — Adzuna's location-based search occasionally
+// returns loosely-related, non-tech postings alongside real tech-role
+// results (a "Hotel Manager" posting showing up under a broad city search
+// being the textbook case). Checked as an ALLOWLIST, not a denylist: a job
+// title must positively match a known tech-role pattern to be kept, rather
+// than trying to enumerate every non-tech title that could show up (a
+// denylist can't anticipate everything; an allowlist only has to describe
+// the roles this app is actually for). HR/recruiting is NOT excluded here —
+// it's a real department at real companies, and staffing AGENCIES are
+// already filtered separately by company name above, so an HR/recruiter
+// posting that survives that filter is a genuine employer's own internal
+// opening, not a third-party agency listing.
+const NON_TECH_ROLE_PATTERN = new RegExp(
+  [
+    "hotel", "housekeeping", "hospitality", "restaurant", "chef\\b", "waiter", "waitress",
+    "sales (manager|executive|representative|associate)", "business development",
+    "area manager", "relationship manager", "store manager", "branch manager",
+    "field executive", "delivery (executive|boy|partner|driver)",
+    "security guard", "receptionist", "office boy", "\\bpeon\\b", "housekeep",
+    "accountant", "cashier", "\\bteller\\b", "loan officer", "insurance agent",
+  ].join("|"),
+  "i"
+);
+const TECH_ROLE_PATTERN = new RegExp(
+  [
+    "engineer", "\\bengr\\b", "developer", "devleoper", "programmer", "architect",
+    "scientist", "analyst", "designer", "\\bqa\\b", "sdet", "automation", "devops",
+    "\\bsre\\b", "site reliability", "security", "product manager", "program manager",
+    "technical (writer|lead|support|consultant|project manager|program manager)",
+    "\\btech lead\\b", "content writer", "\\bsap\\b", "\\btester\\b", "\\bsoftware\\b",
+    "product design", "user interface", "driver development", "device driver",
+    "\\bhr\\b", "human resources?", "\\brecruit(er|ment|ing)\\b", "talent acquisition",
+    "people partner",
+    "\\bdata\\b", "machine learning", "\\bai\\b", "artificial intelligence", "blockchain",
+    "embedded", "mobile app", "\\bcloud\\b", "network", "database", "\\bdba\\b",
+    "full.?stack", "front.?end", "back.?end", "\\bios\\b", "\\bandroid\\b", "flutter",
+    "react native", "\\.net\\b", "dotnet", "\\bjava\\b", "javascript", "typescript",
+    "python", "golang", "node\\.?js", "\\bphp\\b", "\\bionic\\b", "mlops", "ml ops",
+    "infrastructure", "platform engineer", "solutions? architect", "\\bux\\b", "\\bui\\b",
+    "information technology", "\\bit\\b support", "system administrator", "technical program",
+    "\\btpm\\b", "\\bsde\\b", "\\bcto\\b", "\\bfde\\b", "\\bfdi\\b", "salesforce",
+    "servicenow", "kubernetes", "\\baws\\b", "sql server", "\\bgis\\b", "\\bvlsi\\b",
+    "\\bbim\\b", "penetration test", "cybersecurity", "\\bcrm\\b", "\\berp\\b",
+    "power ?bi", "\\betl\\b", "\\bapi\\b", "linux",
+  ].join("|"),
+  "i"
+);
+
+function isTechRole(title) {
+  if (!title) return false;
+  if (NON_TECH_ROLE_PATTERN.test(title)) return false;
+  return TECH_ROLE_PATTERN.test(title);
+}
+
 async function groupByCompany(rawJobs) {
   const companyMap = new Map();
+  const filteredAgencies = new Set();
+  const filteredNonTechRoles = new Set();
   for (const job of rawJobs) {
     const name = job.company?.trim();
     if (!name || !job.title) continue;
+
+    if (isLikelyStaffingAgency(name)) {
+      filteredAgencies.add(name);
+      continue;
+    }
+
+    if (!isTechRole(job.title)) {
+      filteredNonTechRoles.add(job.title);
+      continue;
+    }
 
     if (!companyMap.has(name)) {
       companyMap.set(name, {
@@ -436,6 +552,15 @@ async function groupByCompany(rawJobs) {
     const inCity = company.jobs.find((j) => j.location?.toLowerCase().includes(company.city.toLowerCase()));
     const inIndia = company.jobs.find((j) => /india/i.test(j.location || ""));
     company.address = inCity?.location || inIndia?.location || company.city;
+  }
+
+  if (filteredAgencies.size > 0) {
+    console.log(`\n  🚫 Filtered ${filteredAgencies.size} likely staffing/recruitment agencies (not real employers):`);
+    console.log(`     ${Array.from(filteredAgencies).sort().join(", ")}`);
+  }
+  if (filteredNonTechRoles.size > 0) {
+    console.log(`\n  🚫 Filtered ${filteredNonTechRoles.size} non-tech job titles (this is a tech job board):`);
+    console.log(`     ${Array.from(filteredNonTechRoles).sort().join(", ")}`);
   }
 
   return Array.from(companyMap.values());

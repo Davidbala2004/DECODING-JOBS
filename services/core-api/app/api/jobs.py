@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.domain import Job, Company, EmploymentType, WorkMode
 from app.schemas import JobRead, JobWithCompanyRead
 from app.services.company_verification import verify_founder_domain
+from app.services.role_classifier import classify_department
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -137,15 +138,37 @@ async def list_active_jobs(
     company_id: Annotated[
         int | None, Query(description="Restrict results to a single company's jobs")
     ] = None,
+    department: Annotated[
+        str | None, Query(description="e.g. Engineering, Data & AI, HR & Recruiting")
+    ] = None,
 ) -> list[Job]:
     """Returns every job currently marked active, newest first."""
     stmt = select(Job).where(Job.is_active.is_(True))
     if company_id is not None:
         stmt = stmt.where(Job.company_id == company_id)
+    if department is not None:
+        stmt = stmt.where(Job.department == department)
     stmt = stmt.order_by(Job.created_at.desc())
 
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.get(
+    "/departments",
+    summary="Get distinct job departments with counts, for the filter dropdown",
+)
+async def list_departments(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[dict]:
+    stmt = (
+        select(Job.department, func.count(Job.id))
+        .where(Job.is_active.is_(True), Job.department.isnot(None))
+        .group_by(Job.department)
+        .order_by(func.count(Job.id).desc())
+    )
+    result = await db.execute(stmt)
+    return [{"department": row[0], "count": row[1]} for row in result.all()]
 
 
 @router.get(
@@ -216,6 +239,7 @@ async def seed_job(
         job.fetched_at = datetime.now(timezone.utc)
         job.apply_url = payload.apply_url or job.apply_url
         job.description = payload.description or job.description
+        job.department = classify_department(payload.title)
     else:
         job = Job(
             company_id=payload.company_id,
@@ -228,6 +252,7 @@ async def seed_job(
             source=payload.source,
             source_url=payload.source_url,
             fetched_at=datetime.now(timezone.utc),
+            department=classify_department(payload.title),
         )
         db.add(job)
 
@@ -284,6 +309,7 @@ async def register_job(
         apply_url=payload.apply_url,
         is_active=True,
         source="founder",
+        department=classify_department(payload.title),
     )
     db.add(job)
     await db.commit()

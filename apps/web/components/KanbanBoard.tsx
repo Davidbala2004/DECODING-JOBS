@@ -13,7 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X } from "lucide-react";
+import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X, FileText } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useIdentityStore } from "@/lib/identityStore";
@@ -165,6 +165,16 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
         <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-bold text-green-600">
           <Mail className="h-2.5 w-2.5" />
           Auto-updated from email
+        </span>
+      )}
+
+      {card.resume_filename && (
+        <span
+          className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[9px] font-semibold text-gray-500"
+          title={card.resume_filename}
+        >
+          <FileText className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">{card.resume_filename}</span>
         </span>
       )}
 
@@ -364,7 +374,7 @@ export function KanbanBoard() {
     statusMutation.mutate({ applicationId, status: newStatus });
   };
 
-  if (!email) return <EmailGate title="See your applications" subtitle="Enter your email to load your tracker board" />;
+  if (!email) return <EmailGate title="See your applications" subtitle="Sign in with Google to load your tracker board" />;
 
   if (isLoading) {
     return (

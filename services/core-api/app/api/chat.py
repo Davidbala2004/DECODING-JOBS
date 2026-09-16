@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.users import get_or_create_user
 from app.db.session import get_db
-from app.models.domain import ChatConversation, ChatMessageRecord, Company, Job, Resume
+from app.models.domain import ChatConversation, ChatMessageRecord, Company, Job, Resume, User
 from app.schemas import (
     ChatCompanyResult,
     ChatConversationRead,
@@ -410,6 +410,28 @@ async def append_message(
 
 async def _run_chat(payload: ChatRequest, db: AsyncSession) -> ChatResponse:
     system_content = _SYSTEM_PROMPT
+
+    if payload.user_email:
+        user_result = await db.execute(select(User).where(User.email == payload.user_email.strip().lower()))
+        user = user_result.scalar_one_or_none()
+        if user and (user.target_roles or user.preferred_cities or user.skills or user.min_salary or user.preferred_work_mode):
+            prefs = []
+            if user.target_roles:
+                prefs.append(f"target roles: {', '.join(user.target_roles)}")
+            if user.preferred_cities:
+                prefs.append(f"preferred cities: {', '.join(user.preferred_cities)}")
+            if user.preferred_work_mode:
+                prefs.append(f"preferred work mode: {user.preferred_work_mode}")
+            if user.min_salary:
+                prefs.append(f"minimum salary: ₹{user.min_salary:,}/yr")
+            if user.skills:
+                prefs.append(f"skills: {', '.join(user.skills)}")
+            system_content += (
+                "\n\nThe user has saved these preferences (from their Preferences page) — use them to "
+                "narrow search/recommendations automatically when relevant, without making them repeat "
+                "this; but still follow whatever they explicitly ask for in the conversation over these "
+                f"defaults if the two conflict: {'; '.join(prefs)}."
+            )
 
     if payload.resume_id is not None:
         resume = await db.get(Resume, payload.resume_id)

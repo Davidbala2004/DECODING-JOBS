@@ -24,6 +24,7 @@ const STAGES = ["Seed", "Early Stage", "Series A", "Series B", "Growth", "Public
 const CITIES = [
   "Bengaluru", "Chennai", "Hyderabad", "Mumbai", "Pune", "Delhi NCR",
   "Kolkata", "Ahmedabad", "Kochi", "Coimbatore", "Thiruvananthapuram", "Madurai", "Kozhikode",
+  "Visakhapatnam", "Mysuru",
 ];
 const TEAM_SIZES = ["1-10", "11-50", "51-200", "201-500", "500+"];
 const EMPLOYMENT_TYPES: { value: EmploymentType; label: string }[] = [

@@ -23,11 +23,13 @@ from sqlalchemy import (
 )
 from sqlalchemy import (
     ForeignKey,
+    Integer,
     LargeBinary,
     Numeric,
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -175,6 +177,11 @@ class Job(Base):
     # Phase 2: job source tracking.
     source: Mapped[str | None] = mapped_column(String(50), nullable=True, default="manual")
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Functional department (Engineering, Data & AI, DevOps & Infra, QA,
+    # Design, Product, Security, HR & Recruiting, Support, Other) — lets a
+    # user filter by role type instead of the ingestion pipeline making an
+    # all-or-nothing tech/non-tech call. See app/services/role_classifier.py.
+    department: Mapped[str | None] = mapped_column(String(40), nullable=True)
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -233,6 +240,26 @@ class Application(Base):
     job: Mapped["Job"] = relationship()
 
 
+class SavedSearch(Base):
+    """A user's saved map filter combo, optionally with email alerts."""
+
+    __tablename__ = "saved_searches"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    filters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    email_alerts_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship()
+
+
 class User(Base):
     """A student/job-seeker account."""
 
@@ -246,7 +273,34 @@ class User(Base):
     # Local-part of this user's personal inbound-email address
     # (u-{forwarding_token}@{INBOUND_EMAIL_DOMAIN}) — see api/emails.py.
     forwarding_token: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    # Set once a user signs in with Google — verifies this row's email is the
+    # one Google actually authenticated, not just whatever was typed in.
+    google_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Job-seeker preferences — personalize search/chat without re-asking.
+    target_roles: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    preferred_cities: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    preferred_work_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    min_salary: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    skills: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Candidate-search fields — let a recruiter filter/rank by seniority and
+    # credibility signals without opening a resume. Links are self-reported;
+    # the *_verified flags come from a best-effort reachability check (see
+    # services/link_verifier.py), not proof of ownership.
+    experience_years: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    # "immediate", "15_days", "30_days", "60_days", "90_days" — free-form
+    # string, not an enum, since notice terms vary enough across companies
+    # that a fixed DB enum would be too rigid.
+    notice_period: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    github_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    leetcode_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    github_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    linkedin_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    leetcode_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Opt-out of recruiter candidate search entirely — defaults true so
+    # existing behavior doesn't change, but a job seeker can turn it off.
+    profile_visible_to_recruiters: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -256,6 +310,33 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+
+class CandidateUnlock(Base):
+    """Records that a company has viewed a candidate's full profile/resume.
+
+    Free for now — this table exists so a credits system can be added later
+    (deduct on insert, block on limit) without a schema change, and so
+    re-viewing an already-unlocked candidate doesn't re-charge anything.
+    """
+
+    __tablename__ = "candidate_unlocks"
+    __table_args__ = (UniqueConstraint("company_id", "user_id", name="uq_candidate_unlocks_company_user"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    company_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    unlocked_by_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    unlocked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    company: Mapped["Company"] = relationship()
+    user: Mapped["User"] = relationship()
 
 
 class EmailEvent(Base):

@@ -1,6 +1,6 @@
 # DECODING JOBS
 
-A map-based job search command center for tech students. Explore real companies across major India tech hubs on an interactive map or a grid view, filter by sector/stage/city, search roles, get AI-powered resume/interview coaching, apply with one click, and track applications on a Kanban board — all identified by email only, no login required.
+A map-based job search command center for tech students. Explore real companies across major India tech hubs on an interactive map or a grid view, filter by sector/stage/city, search roles, get AI-powered resume/interview coaching, apply with one click, and track applications on a Kanban board — identified by email or Google sign-in, no password required. Recruiters get the reverse: a searchable, verified candidate database over the same job-seeker profiles.
 
 ![Next.js](https://img.shields.io/badge/Next.js-15-black)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
@@ -20,7 +20,11 @@ A map-based job search command center for tech students. Explore real companies 
 - **1-Click Apply** — Submit applications with resume selection
 - **List Your Startup** (`/register`) — founders self-register their company and post roles directly, verified instantly by matching their work-email domain to the company's website (see [below](#list-your-startup-register))
 - **AI Job Search Assistant** (`/assistant`) — chat grounded in this app's real data, resume upload + ATS scoring + iterative AI rewriting, and company/role-specific interview prep (see [below](#ai-job-search-assistant-assistant))
-- **Application Tracker** (`/tracker`) — a Kanban board with email-based auto-advancement from forwarded interview emails
+- **Application Tracker** (`/tracker`) — a Kanban board with email-based auto-advancement from forwarded interview emails, showing which resume was used per application
+- **Google Sign-In** — a Google button on the identity gate as a faster, more trustworthy alternative to typing an email; verifies the same underlying account either way (see [below](#identity-and-preferences-google-sign-in))
+- **Preferences** (`/profile`) — target roles, cities, work mode, experience, notice period, salary, skills, and GitHub/LinkedIn/LeetCode links (auto-verified for reachability); personalizes the AI Assistant and, via **"For You,"** the map itself (see [below](#identity-and-preferences-google-sign-in))
+- **Saved Searches & Job Alerts** — save the map's current filter combo as a one-click shortcut, optionally with email alerts when new matching jobs appear (see [below](#saved-searches--job-alerts))
+- **Recruiter Candidate Search** (`/recruiters`) — a company's verified recruiter searches job-seeker profiles by role/experience/work-mode/notice-period fit, then unlocks a candidate's full profile and resume (see [below](#recruiter-candidate-search-recruiters))
 - **Logo Proxy** — Server-side, Postgres-backed favicon caching for company logos
 
 ---
@@ -48,25 +52,34 @@ DECODING-JOBS/
 │       ├── app/                # App Router (pages + API routes)
 │       │   ├── api/logo/       # Favicon proxy, backed by the core-api logo cache
 │       │   ├── assistant/      # AI Assistant page
+│       │   ├── profile/        # Job-seeker preferences page
+│       │   ├── recruiters/     # Recruiter candidate search page
 │       │   ├── register/       # Founder self-registration page
 │       │   ├── tracker/        # Application Tracker (Kanban) page
 │       │   ├── layout.tsx      # Root layout with providers
 │       │   └── page.tsx        # Home page (map + grid + side panel)
 │       ├── components/
-│       │   ├── MapWorkspace.tsx       # Map + grid view, pins, filters, search
+│       │   ├── MapWorkspace.tsx       # Map + grid view, pins, filters, search, "For You"
 │       │   ├── ResponsiveShell.tsx    # Full-bleed map, floating side panel
 │       │   ├── CompanySidePanel.tsx   # Company detail + apply flow
 │       │   ├── ChatAssistant.tsx      # AI Assistant chat UI
 │       │   ├── ChatHistorySidebar.tsx # Chat conversation list
 │       │   ├── RegisterCompanyForm.tsx # Founder self-registration form
 │       │   ├── KanbanBoard.tsx        # Application Tracker board
-│       │   ├── EmailGate.tsx          # Shared email-only identity gate
+│       │   ├── EmailGate.tsx          # Shared identity gate (email + Google sign-in)
+│       │   ├── ProfileWorkspace.tsx   # Job-seeker preferences form
+│       │   ├── SavedSearchesButton.tsx # Save/apply/delete saved map filter combos
+│       │   ├── RecruiterWorkspace.tsx # Recruiter company-domain verification gate
+│       │   ├── CandidateSearchPanel.tsx # Recruiter candidate search + filters
+│       │   ├── CandidateProfileModal.tsx # Unlocked candidate's full profile
 │       │   ├── TopNav.tsx             # Navigation bar
 │       │   └── ui/                    # Reusable UI primitives
 │       └── lib/
-│           ├── api.ts          # Typed API client for core-api
-│           ├── store.ts        # Zustand store (selectedCompanyId)
-│           └── utils.ts        # Utility functions (cn, etc.)
+│           ├── api.ts                  # Typed API client for core-api
+│           ├── store.ts                # Zustand store (selectedCompanyId)
+│           ├── identityStore.ts        # Job-seeker identity (email/Google), persisted
+│           ├── recruiterIdentityStore.ts # Recruiter identity (company-verified), persisted
+│           └── utils.ts                # Utility functions (cn, etc.)
 ├── services/
 │   └── core-api/               # FastAPI backend
 │       ├── app/
@@ -76,21 +89,27 @@ DECODING-JOBS/
 │       │   │   ├── applications.py # Application submission + Kanban board
 │       │   │   ├── resumes.py      # Resume upload + ATS scoring
 │       │   │   ├── chat.py         # AI Assistant chat + conversation history
+│       │   │   ├── users.py        # Identity (email/Google), preferences, saved searches
+│       │   │   ├── recruiters.py   # Recruiter identify + candidate search + unlock
+│       │   │   ├── alerts.py       # Saved-search email-alert sweep
 │       │   │   └── emails.py       # SendGrid inbound email → interview tracking
 │       │   ├── services/
 │       │   │   ├── groq_client.py            # Shared Groq (LLM) HTTP client
 │       │   │   ├── company_verification.py   # Work-email-domain verification
+│       │   │   ├── link_verifier.py           # GitHub/LinkedIn/LeetCode reachability checks
+│       │   │   ├── sendgrid_client.py         # Outbound email (job alerts)
+│       │   │   ├── role_classifier.py         # Job title → department classification
 │       │   │   └── geo.py                    # City-center fallback coordinates
 │       │   ├── core/config.py      # Pydantic settings
 │       │   ├── db/session.py       # Async SQLAlchemy engine
-│       │   ├── models/domain.py    # ORM models (Company, Job, Application, Resume, Chat...)
+│       │   ├── models/domain.py    # ORM models (Company, Job, User, Application, Resume, SavedSearch, CandidateUnlock, Chat...)
 │       │   ├── schemas.py          # Pydantic request/response schemas
 │       │   └── main.py             # FastAPI app + middleware
 │       ├── Dockerfile          # Multi-stage (builder → dev → prod)
 │       └── requirements.txt
 ├── infra/
 │   ├── docker-compose.yml      # PostGIS + core-api services
-│   └── init-db/                # SQL migrations + seed data (17 files)
+│   └── init-db/                # SQL migrations + seed data (24 files)
 ├── scripts/                    # Scraper & utility scripts (fetch-real-jobs.mjs, geocode.mjs)
 └── .gitignore
 ```
@@ -179,6 +198,17 @@ Open **http://localhost:3000** in your browser.
 | GET | `/api/v1/chat/conversations` | List a user's chat conversations |
 | GET | `/api/v1/chat/conversations/{id}/messages` | Full message history for a conversation |
 | DELETE | `/api/v1/chat/conversations/{id}` | Delete a conversation |
+| POST | `/api/v1/users/identify` | Get-or-create a user by email (no password) |
+| POST | `/api/v1/users/google-auth` | Sign in with Google — verifies the ID token, same identity as `/identify` |
+| GET | `/api/v1/users/preferences` | Get a user's job-search preferences |
+| PUT | `/api/v1/users/preferences` | Update preferences (roles, cities, work mode, experience, notice period, links, recruiter visibility) |
+| POST | `/api/v1/users/saved-searches` | Save the current map filters as a shortcut, optionally with email alerts |
+| GET | `/api/v1/users/saved-searches` | List a user's saved searches |
+| DELETE | `/api/v1/users/saved-searches/{id}` | Delete a saved search (owner-checked) |
+| POST | `/api/v1/alerts/run` | Sweep saved searches with alerts enabled, email matching new jobs (ingestion-key protected) |
+| POST | `/api/v1/recruiters/identify` | Verify a recruiter's email against a registered company's domain |
+| GET | `/api/v1/recruiters/candidates` | Search masked candidate profiles by role/city/work-mode/experience/notice-period |
+| POST | `/api/v1/recruiters/candidates/{id}/unlock` | Unlock a candidate's full profile + resume (free, idempotent) |
 | GET | `/api/v1/logos?domain=` | Cached company logo proxy (frontend calls it via `/api/logo`) |
 
 ---
@@ -199,13 +229,30 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:3002,h
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-> `.env.local` is optional — defaults to `http://localhost:8000` if not set.
+> `.env.local` is optional — `NEXT_PUBLIC_API_URL` defaults to `http://localhost:8000` if not set, and the Google Sign-In button just doesn't render without a client ID (the email-only gate still works).
+
+### Google Sign-In (`GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID`)
+
+Get a free OAuth Client ID at [console.cloud.google.com](https://console.cloud.google.com) (APIs & Services → Credentials → Create OAuth client ID → Web application). It is **not a secret** — it's meant to be public, since the browser needs it to render the Google button — but it still lives in `.env.local` for convenience since both the frontend and backend need the exact same value:
+
+```env
+# services/core-api/.env.local
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+
+# apps/web/.env.local
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+```
+
+Unset on the backend, `/users/google-auth` returns a clean 503 "not configured" instead of erroring; unset on the frontend, the button just doesn't render — the plain email gate keeps working either way.
 
 ### Personal secrets (`services/core-api/.env.local`)
 
-`services/core-api/.env` is committed (non-sensitive dev defaults only — DB password, CORS origins). Real secrets — `GROQ_API_KEY`, `SENDGRID_INBOUND_USERNAME`/`PASSWORD`, `INGESTION_API_KEY` — go in `services/core-api/.env.local` instead, which `infra/docker-compose.yml` loads as an optional overlay on top of `.env` and which `.gitignore` keeps out of version control.
+`services/core-api/.env` is committed (non-sensitive dev defaults only — DB password, CORS origins). Real secrets — `GROQ_API_KEY`, `SENDGRID_INBOUND_USERNAME`/`PASSWORD`, `SENDGRID_API_KEY`/`SENDGRID_FROM_EMAIL`, `INGESTION_API_KEY` — go in `services/core-api/.env.local` instead, which `infra/docker-compose.yml` loads as an optional overlay on top of `.env` and which `.gitignore` keeps out of version control.
+
+**`SENDGRID_API_KEY`** is a separate credential from the inbound-parse username/password above — it's SendGrid's *Mail Send* API key, needed for `/alerts/run` to actually email saved-search matches instead of just logging them. Unset, the sweep still runs and updates `last_checked_at`, it just skips sending (graceful no-op, not an error).
 
 **`INGESTION_API_KEY` matters even for local dev**, unlike the others: `POST /companies/seed`, `/jobs/seed`, and `/jobs/expire-stale` have write access to the live map and reject every request until this is set (closed by default, not "feature disabled" like the others). Generate one and put the same value in both places it's needed:
 
@@ -277,6 +324,14 @@ Tables are created via SQL scripts in `infra/init-db/` (run once on first contai
 | `04-init-applications.sql` | Create `applications` table |
 | `05-add-real-company-fields.sql` | Add sector, stage, area, city, funding, etc. |
 | `06-09` | Seed data — companies across Bengaluru, Chennai, Hyderabad, Kochi |
+| `10-17` | Application Tracker, founder self-registration, real-data ingestion fields |
+| `18-add-user-preferences.sql` | Target roles, preferred cities, work mode, min salary, skills |
+| `19-add-job-department.sql` | Functional department classification on jobs |
+| `20-add-google-auth.sql` | `google_id` on users |
+| `21-add-saved-searches.sql` | `saved_searches` table |
+| `22-add-candidate-profile.sql` | Experience years, GitHub/LinkedIn/LeetCode links + verified flags, `candidate_unlocks` table |
+| `23-add-recruiter-visibility.sql` | `profile_visible_to_recruiters` opt-out flag |
+| `24-add-notice-period.sql` | `notice_period` on users |
 
 ### Reset Database
 
@@ -359,9 +414,44 @@ A third page alongside the map and the tracker: a Claude/ChatGPT-style chat assi
 - **Chat** — ask about roles, cities, or companies ("Remote frontend roles in Bengaluru"); the assistant calls real search/filter tools and replies with actual result cards that link back into the map. Ask for interview prep ("prepare me for a Razorpay backend interview") and it pulls that company's real culture/sentiment data plus the real job description when one exists — general interview-format advice is clearly separated from that real data, never presented as a leaked/real question. Replies render as full Markdown (tables, headers, lists).
 - **Resume Coach** — attach a PDF/DOCX resume in-chat (≤5MB, paperclip icon, no separate upload page); it's parsed to text (`pypdf`/`python-docx`) and scored for ATS-friendliness (0–100) with strengths/weaknesses/rewrite suggestions via the same Groq key used above. Ask it to rewrite the resume and it produces a full ATS-safe Markdown rewrite (single-column, standard section headers, plain bullets — no tables/graphics that break ATS parsers); ask for further edits and it revises that same rewritten version instead of restarting from the raw original, like any other iterative chat assistant. Re-analyzing against a specific job (via "Prep for this role" on any job card in the map's side panel, or by picking a resume while `?jobId=` is set) also surfaces missing keywords from that job's real description.
 - **Chat History** — every conversation is persisted (`chat_conversations`/`chat_messages` tables) and listed in a sidebar, so you can pick up an old thread instead of losing it on refresh.
-- **Identity** — same email-only gate as the tracker (`useIdentityStore`/`EmailGate`), no separate login.
+- **Identity** — same identity gate as the tracker (`useIdentityStore`/`EmailGate` — email or Google sign-in), no separate login.
 
 Needs the same `GROQ_API_KEY` as the email pipeline above — unset, both chat and resume analysis reply with a friendly "not configured yet" instead of erroring.
+
+---
+
+## Identity and Preferences (Google Sign-In)
+
+**Identity** (`EmailGate`, shared by the tracker, assistant, and preferences) is a Google Sign-In button by default, falling back to nothing if `NEXT_PUBLIC_GOOGLE_CLIENT_ID` isn't set. Signing in with Google doesn't replace the underlying identity model — it just supplies a verified email to the same `get_or_create_user()` every other feature already keyed on, so someone who used the app before Google Sign-In existed keeps their tracker/chat/resumes unchanged once they sign in with Google instead.
+
+**Preferences** (`/profile`) let a job seeker set, once, what search/chat/recruiter-search all read from afterward:
+
+- Target roles, preferred cities, work mode, minimum salary, skills
+- Experience in years (`0` renders as "Fresher" everywhere, not "0 yrs")
+- Notice period — Immediate / 15 / 30 / 60 / 90 days
+- GitHub / LinkedIn / LeetCode links, each auto-checked for reachability on save (GitHub via its public API, LinkedIn/LeetCode via a plain HTTP check) and shown as Verified/Unverified — this is a credibility signal, not proof of ownership, and LinkedIn/LeetCode in particular often show Unverified even for real profiles since their anti-bot protection blocks a plain server-side request
+- **Visible to recruiters** toggle (default on) — turning it off removes the profile from recruiter candidate search entirely, enforced server-side (not just hidden in the UI)
+
+The map's **"For You"** toggle (only shown once a signed-in user has target roles set) filters the map to companies with a job matching those roles, and the map defaults to the user's top preferred city on first load.
+
+---
+
+## Saved Searches & Job Alerts
+
+From the map toolbar, **Saved** lets a signed-in user save the current filter combo (city, sector, stage, area, department, hiring-only, search text) as a named shortcut, with an optional **email alerts** toggle. Saved searches can be re-applied with one click or deleted from the same dropdown.
+
+A separate sweep, `POST /api/v1/alerts/run` (protected by `X-Ingestion-Key`, meant to run on a schedule — not called by the frontend), checks every alert-enabled saved search for jobs posted since it was last checked, matches them against that search's filters, and emails the owner via SendGrid — see `SENDGRID_API_KEY` under [Environment Variables](#environment-variables) above. Without that key configured, the sweep still runs and advances `last_checked_at` correctly, it just logs instead of sending — so the feature degrades gracefully rather than silently doing nothing unexplained.
+
+---
+
+## Recruiter Candidate Search (`/recruiters`)
+
+The reverse of the map: instead of a job seeker browsing companies, a company's recruiter searches job-seeker profiles.
+
+- **Identity** — no separate recruiter login. A recruiter enters their work email; it's verified against an already-registered company's domain using the exact same `verify_founder_domain`/`extract_domain` logic as [founder self-registration](#list-your-startup-register) (or an exact match on the company's `submitted_by_email`). No matching company → a clear 403, with a link to register one first.
+- **Search** — filter candidates by role/skill text, city, work mode, experience range, notice period, and "verified links only." Results are masked (no name/email/contact info) and ranked by a simple in-Python relevance score (role/skill keyword overlap, having an analyzed resume, verified-link count) — no LLM call per search, so it stays fast and free to run.
+- **Unlock** — free for now (no payment/credits integration yet), gated only on the recruiter's company verification. Unlocking is idempotent (`candidate_unlocks` has a `(company_id, user_id)` unique constraint, upserted with `ON CONFLICT DO NOTHING`) and returns the candidate's full name, email, links, and resume ATS score/summary/suggestions if they've uploaded and analyzed one via the AI Assistant.
+- **Consent** — a candidate can opt out entirely via the **Visible to recruiters** toggle on `/profile`; this is enforced in the search query and in the unlock endpoint itself (a direct unlock-by-ID on an opted-out candidate 404s), not just hidden client-side.
 
 ---
 

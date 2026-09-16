@@ -27,7 +27,7 @@ export function AssistantWorkspace() {
     return (
       <EmailGate
         title="AI Job Search Assistant"
-        subtitle="Enter your email to chat and get resume feedback"
+        subtitle="Sign in with Google to chat and get resume feedback"
       />
     );
   }

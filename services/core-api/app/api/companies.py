@@ -38,6 +38,7 @@ async def search_companies(
     stage: str | None = Query(None, description="Filter by stage (Seed, Growth, Public, etc.)"),
     area: str | None = Query(None, description="Filter by area (Koramangala, HSR Layout, etc.)"),
     company_type: str | None = Query(None, description="Filter by computed type (Startup, Growth, Public, Other)"),
+    department: str | None = Query(None, description="Only companies with an active job in this department (Engineering, Data & AI, etc.)"),
 ) -> list[Company]:
     """Returns every company located inside the given lat/lng bounding box.
 
@@ -69,6 +70,13 @@ async def search_companies(
         stmt = stmt.where(Company.stage == stage)
     if area:
         stmt = stmt.where(Company.area == area)
+    if department:
+        department_subq = (
+            select(Job.company_id)
+            .where(Job.is_active.is_(True), Job.department == department)
+            .distinct()
+        )
+        stmt = stmt.where(Company.id.in_(department_subq))
     if company_type:
         # Map computed type back to stage values for filtering
         if company_type == 'Startup':
@@ -84,25 +92,30 @@ async def search_companies(
     companies = list(result.scalars().all())
 
     # Annotate each company with its active job count + "hiring freshness"
-    # for the frontend (job posted in the last 3 days gets a flash on the pin).
+    # (job posted in the last 3 days gets a flash on the pin) — one grouped
+    # query for every company in view, not two queries per company. At real
+    # scale (500+ companies in a single Bengaluru viewport once city-wide
+    # ingestion ran) the old per-company loop meant 1000+ sequential
+    # round-trips for a single map load.
     recent_cutoff = datetime.now(timezone.utc) - timedelta(days=RECENT_HIRING_DAYS)
-    for company in companies:
-        count_result = await db.execute(
-            select(func.count(Job.id)).where(
-                Job.company_id == company.id,
-                Job.is_active.is_(True),
+    company_ids = [c.id for c in companies]
+    stats_by_company: dict[int, tuple[int, int]] = {}
+    if company_ids:
+        stats_result = await db.execute(
+            select(
+                Job.company_id,
+                func.count(Job.id).label("active_count"),
+                func.count(Job.id).filter(Job.created_at >= recent_cutoff).label("recent_count"),
             )
+            .where(Job.company_id.in_(company_ids), Job.is_active.is_(True))
+            .group_by(Job.company_id)
         )
-        company._active_job_count = count_result.scalar() or 0
+        stats_by_company = {row.company_id: (row.active_count, row.recent_count) for row in stats_result.all()}
 
-        recent_result = await db.execute(
-            select(func.count(Job.id)).where(
-                Job.company_id == company.id,
-                Job.is_active.is_(True),
-                Job.created_at >= recent_cutoff,
-            )
-        )
-        company._recently_hiring = (recent_result.scalar() or 0) > 0
+    for company in companies:
+        active_count, recent_count = stats_by_company.get(company.id, (0, 0))
+        company._active_job_count = active_count
+        company._recently_hiring = recent_count > 0
 
     return companies
 
@@ -305,14 +318,17 @@ async def seed_company(
         company.description = payload.description or company.description
         company.sector = payload.sector or company.sector
         company.stage = payload.stage or company.stage
-        company.area = payload.area or company.area
-        company.city = payload.city or company.city
         company.linkedin_url = payload.linkedin_url or company.linkedin_url
         company.jobs_url = payload.jobs_url or company.jobs_url
         company.website_url = payload.website_url or company.website_url
         company.status = payload.status or company.status
-        if payload.latitude and payload.longitude:
-            company.location = from_shape(Point(payload.longitude, payload.latitude), srid=4326)
+        # Geography (area/city/location) is set ONLY on first insert, below —
+        # never overwritten on re-seed. A company with the same name can
+        # legitimately appear across several cities' ingestion runs (Amazon,
+        # Deloitte, Cognizant all hire in nearly every hub); re-seeding used
+        # to silently move an already-placed pin to whichever city ran last,
+        # producing a company row where city and address disagreed with each
+        # other. First-seen city wins and stays put.
     else:
         # Create new company.
         company = Company(

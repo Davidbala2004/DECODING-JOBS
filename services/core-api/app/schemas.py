@@ -101,6 +101,8 @@ class JobRead(BaseModel):
     # Phase 2: job source tracking.
     source: str | None = None
     source_url: str | None = None
+    # Functional department (Engineering, Data & AI, HR & Recruiting, etc.)
+    department: str | None = None
     created_at: datetime
 
 
@@ -191,6 +193,7 @@ class UserRead(BaseModel):
 
     id: int
     email: str
+    full_name: str | None = None
     forwarding_token: str | None = None
     forwarding_address: str | None = None
 
@@ -203,6 +206,140 @@ class UserRead(BaseModel):
         elif isinstance(data, dict) and "_forwarding_address" in data:
             data["forwarding_address"] = data.pop("_forwarding_address")
         return data
+
+
+class GoogleAuthRequest(BaseModel):
+    """Body for POST /users/google-auth — the ID token from Google's Sign In
+    button/One Tap flow, verified server-side before trusting anything in it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    credential: str = Field(..., min_length=10)
+
+
+class UserPreferencesRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    target_roles: list[str] = Field(default_factory=list)
+    preferred_cities: list[str] = Field(default_factory=list)
+    preferred_work_mode: str | None = None
+    min_salary: int | None = None
+    skills: list[str] = Field(default_factory=list)
+    experience_years: int | None = None
+    notice_period: str | None = None
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    leetcode_url: str | None = None
+    github_verified: bool = False
+    linkedin_verified: bool = False
+    leetcode_verified: bool = False
+    profile_visible_to_recruiters: bool = True
+
+    @model_validator(mode="before")
+    @classmethod
+    def null_lists_to_empty(cls, data):
+        if isinstance(data, dict):
+            for field in ("target_roles", "preferred_cities", "skills"):
+                if data.get(field) is None:
+                    data[field] = []
+        else:
+            for field in ("target_roles", "preferred_cities", "skills"):
+                if getattr(data, field, None) is None:
+                    setattr(data, field, [])
+        return data
+
+
+class UserPreferencesUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(..., min_length=3, max_length=320)
+    target_roles: list[str] | None = None
+    preferred_cities: list[str] | None = None
+    preferred_work_mode: str | None = None
+    min_salary: int | None = None
+    skills: list[str] | None = None
+    experience_years: int | None = None
+    notice_period: str | None = None
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    leetcode_url: str | None = None
+    profile_visible_to_recruiters: bool | None = None
+
+
+class RecruiterIdentifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(..., min_length=3, max_length=320)
+
+
+class RecruiterIdentifyResponse(BaseModel):
+    company_id: int
+    company_name: str
+
+
+class CandidateSearchResult(BaseModel):
+    """A masked candidate — enough to judge fit, nothing to contact them with."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    target_roles: list[str] = Field(default_factory=list)
+    preferred_cities: list[str] = Field(default_factory=list)
+    preferred_work_mode: str | None = None
+    experience_years: int | None = None
+    notice_period: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    ats_score: int | None = None
+    github_verified: bool = False
+    linkedin_verified: bool = False
+    leetcode_verified: bool = False
+    already_unlocked: bool = False
+
+
+class CandidateProfileRead(BaseModel):
+    """A candidate's full profile — only returned after an unlock."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    email: str
+    target_roles: list[str] = Field(default_factory=list)
+    preferred_cities: list[str] = Field(default_factory=list)
+    preferred_work_mode: str | None = None
+    experience_years: int | None = None
+    notice_period: str | None = None
+    skills: list[str] = Field(default_factory=list)
+    github_url: str | None = None
+    linkedin_url: str | None = None
+    leetcode_url: str | None = None
+    github_verified: bool = False
+    linkedin_verified: bool = False
+    leetcode_verified: bool = False
+    resume_id: int | None = None
+    ats_score: int | None = None
+    ats_summary: str | None = None
+    ats_suggestions: dict | None = None
+
+
+class SavedSearchCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(..., min_length=3, max_length=320)
+    label: str = Field(..., min_length=1, max_length=120)
+    filters: dict = Field(default_factory=dict)
+    email_alerts_enabled: bool = False
+
+
+class SavedSearchRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    label: str
+    filters: dict
+    email_alerts_enabled: bool
+    last_checked_at: datetime | None = None
+    created_at: datetime
 
 
 class EmailEventRead(BaseModel):

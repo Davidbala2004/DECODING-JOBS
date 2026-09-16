@@ -10,3 +10,7 @@ httpx==0.28.1
 python-multipart==0.0.20
 pypdf==5.1.0
 python-docx==1.1.2
+google-auth==2.37.0
+# google.auth.transport.requests needs this directly — google-auth doesn't
+# pull it in on its own unless installed via the `google-auth[requests]` extra.
+requests==2.32.3

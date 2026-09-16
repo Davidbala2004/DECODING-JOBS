@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ListChecks, MapPin, Radio, Rocket } from "lucide-react";
+import { Sparkles, ListChecks, MapPin, Radio, Rocket, UserCog, Users2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -91,6 +91,10 @@ export function TopNav() {
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
+        <NavLink href="/recruiters" icon={Users2} label="For Recruiters" active={pathname === "/recruiters"} />
+
+        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
+
         <NavLink href="/assistant" icon={Sparkles} label="AI Assistant" active={pathname === "/assistant"} />
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
@@ -102,6 +106,10 @@ export function TopNav() {
           badge={board?.length}
           active={pathname === "/tracker"}
         />
+
+        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
+
+        <NavLink href="/profile" icon={UserCog} label="Preferences" active={pathname === "/profile"} />
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
