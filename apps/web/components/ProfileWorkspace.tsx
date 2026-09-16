@@ -42,7 +42,7 @@ export function formatExperience(years: number | null): string {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">{children}</label>;
+  return <label className="mb-1.5 block text-[12.5px] font-bold uppercase tracking-wide text-gray-500">{children}</label>;
 }
 
 function LinkField({
@@ -65,7 +65,7 @@ function LinkField({
       {value && (
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase",
+            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
             verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
           )}
         >
@@ -181,7 +181,7 @@ function ProfileForm({ email }: { email: string }) {
               value={targetRoles}
               onChange={(e) => setTargetRoles(e.target.value)}
             />
-            <p className="mt-1 text-[10.5px] text-gray-400">Comma-separated</p>
+            <p className="mt-1 text-[12px] text-gray-400">Comma-separated</p>
           </div>
 
           <div>
@@ -238,11 +238,11 @@ function ProfileForm({ email }: { email: string }) {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
-            <p className="mt-1 text-[10.5px] text-gray-400">Comma-separated</p>
+            <p className="mt-1 text-[12px] text-gray-400">Comma-separated</p>
           </div>
 
           <div className="border-t border-gray-50 pt-4">
-            <p className="mb-2.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            <p className="mb-2.5 text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
               Credibility links <span className="font-normal normal-case text-gray-400">— shown to recruiters searching for you</span>
             </p>
             <div className="flex flex-col gap-2.5">
@@ -292,7 +292,7 @@ function ProfileForm({ email }: { email: string }) {
               <p className="text-[12px] font-semibold text-gray-700">
                 Visible to recruiters
               </p>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">
+              <p className="mt-0.5 text-[12.5px] leading-relaxed text-gray-500">
                 {visibleToRecruiters
                   ? "Verified recruiters searching for your target roles can find and unlock this profile. Turn this off to stay hidden from candidate search entirely."
                   : "Your profile is hidden from recruiter search — no company can find or unlock it, even a perfect match."}

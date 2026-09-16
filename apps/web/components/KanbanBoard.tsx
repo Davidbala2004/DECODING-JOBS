@@ -103,12 +103,12 @@ function RoundStepper({ applicationId, round }: { applicationId: number; round: 
           />
         ))}
       </div>
-      <span className="text-[10px] font-bold text-green-700">Round {round}</span>
+      <span className="text-[11.5px] font-bold text-green-700">Round {round}</span>
       <button
         type="button"
         disabled={mutation.isPending}
         onClick={() => mutation.mutate({ applicationId, interviewRound: round + 1 })}
-        className="ml-auto flex items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-[9px] font-bold text-green-700 transition-all hover:bg-green-100 active:scale-95"
+        className="ml-auto flex items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 transition-all hover:bg-green-100 active:scale-95"
       >
         <Plus className="h-2.5 w-2.5" />
         Next round
@@ -139,7 +139,7 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
       style={{ animation: `cardFadeIn 0.35s ease-out ${Math.min(index, 8) * 0.04}s both` }}
     >
       <div className="flex items-start gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[11px] font-bold text-green-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
           {logo ? (
             <img
               src={logo}
@@ -156,13 +156,13 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-          <p className="truncate text-[11px] text-gray-500">{card.job.title}</p>
+          <p className="truncate text-[12.5px] text-gray-500">{card.job.title}</p>
         </div>
         {card.status === "offer" && <Sparkles className="h-4 w-4 shrink-0 text-emerald-500" />}
       </div>
 
       {card.auto_tracked && (
-        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-bold text-green-600">
+        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-600">
           <Mail className="h-2.5 w-2.5" />
           Auto-updated from email
         </span>
@@ -170,7 +170,7 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
 
       {card.resume_filename && (
         <span
-          className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[9px] font-semibold text-gray-500"
+          className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500"
           title={card.resume_filename}
         >
           <FileText className="h-2.5 w-2.5 shrink-0" />
@@ -184,14 +184,14 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
 
       <div className="mt-2.5 flex items-center justify-between">
         {company.area || company.city ? (
-          <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
+          <span className="flex items-center gap-0.5 text-[11.5px] text-gray-400">
             <MapPin className="h-2.5 w-2.5" />
             {company.area || company.city}
           </span>
         ) : (
           <span />
         )}
-        <span className="text-[10px] font-medium text-gray-300">
+        <span className="text-[11.5px] font-medium text-gray-300">
           {days === 0 ? "today" : `${days}d ago`}
         </span>
       </div>
@@ -205,12 +205,12 @@ function KanbanCardPreview({ card }: { card: ApplicationBoardCard }) {
   return (
     <div className="w-[240px] rotate-2 rounded-2xl border border-green-200 bg-white p-3 shadow-[0_16px_40px_rgba(22,163,74,0.25)]">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[11px] font-bold text-green-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
           {logo ? <img src={logo} alt={company.name} className="h-full w-full object-contain p-1" /> : getInitials(company.name)}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-          <p className="truncate text-[11px] text-gray-500">{card.job.title}</p>
+          <p className="truncate text-[12.5px] text-gray-500">{card.job.title}</p>
         </div>
       </div>
     </div>
@@ -252,13 +252,13 @@ function KanbanColumn({
           <Icon className="h-3.5 w-3.5" style={{ color: accent }} />
         </span>
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">{label}</h3>
-        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-500 shadow-sm">
+        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 text-[11.5px] font-bold text-gray-500 shadow-sm">
           {cards.length}
         </span>
       </div>
       <div className="scroll-thin flex flex-1 flex-col gap-2 overflow-y-auto px-2.5 pb-3">
         {cards.length === 0 ? (
-          <p className="py-6 text-center text-[11px] text-gray-300">Drop a card here</p>
+          <p className="py-6 text-center text-[12.5px] text-gray-300">Drop a card here</p>
         ) : (
           cards.map((card, i) => <KanbanCard key={card.id} card={card} index={i} />)
         )}
@@ -280,7 +280,7 @@ function ForwardingBanner() {
 
   if (!forwardingAddress) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3.5 py-2.5 text-[11px] text-gray-400">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3.5 py-2.5 text-[12.5px] text-gray-400">
         <Mail className="h-3.5 w-3.5 shrink-0" />
         <span className="flex-1">Email auto-tracking isn&apos;t set up yet — advance rounds with the button on each card for now.</span>
         <button type="button" onClick={() => setDismissed(true)} className="shrink-0 text-gray-300 hover:text-gray-500">
@@ -291,7 +291,7 @@ function ForwardingBanner() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5 text-[11px] text-green-800">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5 text-[12.5px] text-green-800">
       <Mail className="h-3.5 w-3.5 shrink-0 text-green-500" />
       <span className="flex-1">
         Forward interview emails to <span className="font-mono font-bold">{forwardingAddress}</span> to auto-update this board
@@ -303,7 +303,7 @@ function ForwardingBanner() {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         }}
-        className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-green-700 shadow-sm transition-all hover:shadow-md active:scale-95"
+        className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11.5px] font-bold text-green-700 shadow-sm transition-all hover:shadow-md active:scale-95"
       >
         {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         {copied ? "Copied" : "Copy"}

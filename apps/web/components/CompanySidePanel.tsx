@@ -63,14 +63,14 @@ function formatSalaryRange(job: Job): string {
 }
 
 const SOURCE_BADGES: Record<string, { label: string; cls: string }> = {
-  linkedin: { label: 'LinkedIn', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-600' },
-  indeed: { label: 'Indeed', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-700' },
-  glassdoor: { label: 'Glassdoor', cls: 'rounded-md bg-green-50 px-1.5 py-0.5 text-[9px] font-bold text-green-700' },
-  naukri: { label: 'Naukri', cls: 'rounded-md bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600' },
-  internshala: { label: 'Internshala', cls: 'rounded-md bg-yellow-50 px-1.5 py-0.5 text-[9px] font-bold text-yellow-700' },
-  foundit: { label: 'Foundit', cls: 'rounded-md bg-orange-50 px-1.5 py-0.5 text-[9px] font-bold text-orange-600' },
-  wellfound: { label: 'Wellfound', cls: 'rounded-md bg-purple-50 px-1.5 py-0.5 text-[9px] font-bold text-purple-600' },
-  careers: { label: 'Careers', cls: 'rounded-md bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-600' },
+  linkedin: { label: 'LinkedIn', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600' },
+  indeed: { label: 'Indeed', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700' },
+  glassdoor: { label: 'Glassdoor', cls: 'rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700' },
+  naukri: { label: 'Naukri', cls: 'rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600' },
+  internshala: { label: 'Internshala', cls: 'rounded-md bg-yellow-50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-700' },
+  foundit: { label: 'Foundit', cls: 'rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600' },
+  wellfound: { label: 'Wellfound', cls: 'rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-600' },
+  careers: { label: 'Careers', cls: 'rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600' },
 };
 
 function EmptyState() {
@@ -142,7 +142,7 @@ function CompanyInfoBar({ company }: { company: Company }) {
       {items.map((item, i) => (
         <span
           key={i}
-          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold ${item.color} ${item.bg}`}
+          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold ${item.color} ${item.bg}`}
         >
           <item.icon className="h-3 w-3" />
           {item.label}
@@ -170,11 +170,11 @@ function RoleCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-gray-900">{job.title}</p>
           {job.salary_min || job.salary_max ? (
-            <p className="mt-0.5 text-[11px] text-gray-400">{formatSalaryRange(job)}</p>
+            <p className="mt-0.5 text-[12.5px] text-gray-400">{formatSalaryRange(job)}</p>
           ) : null}
           <div className="mt-1.5 flex items-center gap-1 flex-wrap">
             {mode && (
-              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-gray-500">
+              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-500">
                 {mode}
               </span>
             )}
@@ -184,7 +184,7 @@ function RoleCard({
               </span>
             )}
             {job.source && !SOURCE_BADGES[job.source] && (
-              <span className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[9px] font-bold text-gray-500 capitalize">
+              <span className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-500 capitalize">
                 {job.source}
               </span>
             )}
@@ -219,13 +219,13 @@ function RoleCard({
               href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm shadow-green-500/20 transition-all hover:shadow-md hover:shadow-green-500/30"
+              className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-2.5 py-1.5 text-[11.5px] font-bold text-white shadow-sm shadow-green-500/20 transition-all hover:shadow-md hover:shadow-green-500/30"
             >
               <Zap className="h-3 w-3" />
               APPLY
             </a>
           ) : (
-            <span className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-[10px] font-bold text-gray-400">
+            <span className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-[11.5px] font-bold text-gray-400">
               APPLY
             </span>
           )}
@@ -390,17 +390,17 @@ export function CompanySidePanel() {
             <h1 className="truncate text-base font-bold text-gray-900">{company.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {company.sector && (
-                <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-green-700">
+                <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-green-700">
                   {company.sector}
                 </span>
               )}
               {company.stage && (
-                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-gray-500">
+                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-500">
                   {company.stage}
                 </span>
               )}
               {company.area && (
-                <span className="flex items-center gap-0.5 text-[11px] text-gray-500">
+                <span className="flex items-center gap-0.5 text-[12.5px] text-gray-500">
                   <MapPin className="h-2.5 w-2.5 text-green-400" />
                   {company.area}{company.city ? `, ${company.city}` : ""}
                 </span>
@@ -410,7 +410,7 @@ export function CompanySidePanel() {
         </div>
 
         {company.description && (
-          <p className="mt-2.5 line-clamp-3 text-[11px] leading-relaxed text-gray-600">
+          <p className="mt-2.5 line-clamp-3 text-[12.5px] leading-relaxed text-gray-600">
             {company.description}
           </p>
         )}
@@ -428,7 +428,7 @@ export function CompanySidePanel() {
               href={company.website_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             >
               <Globe className="h-3.5 w-3.5" />
               {websiteDomain || "Website"}
@@ -440,7 +440,7 @@ export function CompanySidePanel() {
               href={company.linkedin_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
             >
               <Linkedin className="h-3.5 w-3.5" />
               LinkedIn
@@ -453,10 +453,10 @@ export function CompanySidePanel() {
       {/* ── Section: Open Roles ── */}
       <div className="rounded-xl border border-gray-100 bg-white p-3">
         <div className="mb-2 flex items-center gap-1.5">
-          <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
           <h2 className="text-xs font-bold text-gray-900">Open Roles</h2>
           {jobs.length > 0 && (
-            <span className="ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">{jobs.length}</span>
+            <span className="ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">{jobs.length}</span>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
@@ -471,7 +471,7 @@ export function CompanySidePanel() {
               />
             ))
           ) : (
-            <p className="py-2 text-center text-[11px] text-gray-400">No active roles right now</p>
+            <p className="py-2 text-center text-[12.5px] text-gray-400">No active roles right now</p>
           )}
         </div>
       </div>
@@ -480,27 +480,27 @@ export function CompanySidePanel() {
       {hasSentiment && (
         <div className="rounded-xl border border-gray-100 bg-white p-3">
           <div className="mb-2 flex items-center gap-1.5">
-            <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
             <h2 className="text-xs font-bold text-gray-900">Company Pulse</h2>
           </div>
           <div className="flex flex-col gap-1">
             {pros.map((pro) => (
               <div key={pro} className="flex items-start gap-1.5 rounded-lg bg-green-50/50 px-2 py-1.5">
                 <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-green-500" />
-                <span className="text-[11px] text-gray-700">{pro}</span>
+                <span className="text-[12.5px] text-gray-700">{pro}</span>
               </div>
             ))}
             {cons.map((con) => (
               <div key={con} className="flex items-start gap-1.5 rounded-lg bg-red-50/50 px-2 py-1.5">
                 <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-400" />
-                <span className="text-[11px] text-gray-700">{con}</span>
+                <span className="text-[12.5px] text-gray-700">{con}</span>
               </div>
             ))}
           </div>
           {company.culture_score !== null && (
             <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 px-2.5 py-1.5">
-              <span className="text-[10px] font-medium text-gray-500">Culture Score</span>
-              <span className="text-[11px] font-bold text-gray-900">{company.culture_score!.toFixed(1)} / 5</span>
+              <span className="text-[11.5px] font-medium text-gray-500">Culture Score</span>
+              <span className="text-[12.5px] font-bold text-gray-900">{company.culture_score!.toFixed(1)} / 5</span>
             </div>
           )}
         </div>
@@ -509,7 +509,7 @@ export function CompanySidePanel() {
       {/* ── Section: Apply ── */}
       <div className="rounded-xl border border-green-100 bg-gradient-to-br from-green-50/30 to-white p-3">
         <div className="mb-2 flex items-center gap-1.5">
-          <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
           <h2 className="text-xs font-bold text-gray-900">Apply</h2>
         </div>
         <div className="flex flex-col gap-2">
@@ -523,7 +523,7 @@ export function CompanySidePanel() {
                 onClick={() => setRoleDropdownOpen((v) => !v)}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-all hover:border-green-200"
               >
-                <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-gray-600">
+                <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-gray-600">
                   <Briefcase className="h-3.5 w-3.5 shrink-0 text-green-500" />
                   <span className="truncate font-semibold text-gray-800">{primaryJob?.title}</span>
                 </span>
@@ -544,7 +544,7 @@ export function CompanySidePanel() {
                         setRoleDropdownOpen(false);
                       }}
                       className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition-colors",
+                        "flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
                         j.id === primaryJob?.id ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
                       )}
                     >
@@ -564,7 +564,7 @@ export function CompanySidePanel() {
                 onClick={() => setResumeDropdownOpen((v) => !v)}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-all hover:border-green-200"
               >
-                <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-gray-600">
+                <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-gray-600">
                   <FileText className="h-3.5 w-3.5 shrink-0 text-green-500" />
                   <span className="truncate">
                     {resumes.find((r) => r.id === selectedResumeId)?.filename ?? "Select a resume"}
@@ -586,13 +586,13 @@ export function CompanySidePanel() {
                         setResumeDropdownOpen(false);
                       }}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[11px] transition-colors",
+                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
                         r.id === selectedResumeId ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
                       )}
                     >
                       <span className="truncate">{r.filename}</span>
                       {r.ats_score !== null && (
-                        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-bold text-gray-500">
+                        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
                           ATS {r.ats_score}
                         </span>
                       )}
@@ -604,7 +604,7 @@ export function CompanySidePanel() {
           ) : (
             <Link
               href="/assistant"
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 bg-white py-2 text-[11px] font-semibold text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 bg-white py-2 text-[12.5px] font-semibold text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             >
               <FileText className="h-3.5 w-3.5" />
               Upload a resume in AI Assistant
@@ -615,7 +615,7 @@ export function CompanySidePanel() {
           {primaryJob && resumes.length > 0 && (
             <Link
               href={`/assistant?jobId=${primaryJob.id}`}
-              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-green-200 bg-white py-1.5 text-[10px] font-semibold text-green-600 transition-all hover:bg-green-50"
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-green-200 bg-white py-1.5 text-[11.5px] font-semibold text-green-600 transition-all hover:bg-green-50"
             >
               <Sparkles className="h-3 w-3" />
               Tailor resume for this role
@@ -624,13 +624,13 @@ export function CompanySidePanel() {
 
           {/* Submit */}
           {hasApplied ? (
-            <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-[11px] font-bold text-white shadow-md shadow-green-500/20">
+            <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-[12.5px] font-bold text-white shadow-md shadow-green-500/20">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Applied
             </div>
           ) : (
             <button
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-[11px] font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl hover:shadow-green-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-[12.5px] font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl hover:shadow-green-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!primaryJob || !selectedResumeId || applyMutation.isPending}
               title={!selectedResumeId ? "Upload a resume first" : undefined}
               onClick={() => {
@@ -647,7 +647,7 @@ export function CompanySidePanel() {
             </button>
           )}
           {applyMutation.isError && (
-            <p className="text-[10px] text-red-500">Submission failed. Try again.</p>
+            <p className="text-[11.5px] text-red-500">Submission failed. Try again.</p>
           )}
         </div>
       </div>
@@ -666,20 +666,20 @@ export function CompanySidePanel() {
         return (
           <div className="rounded-xl border border-gray-100 bg-white p-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <span className="flex h-4.5 w-4.5 items-center justify-center rounded-md bg-green-100 text-[9px] font-bold text-green-700">{++_sec}</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
               <h2 className="text-xs font-bold text-gray-900">Job Description</h2>
               {jobs.length > 1 && (
-                <span className="ml-auto truncate text-[10px] font-semibold text-gray-400">{primaryJob.title}</span>
+                <span className="ml-auto truncate text-[11.5px] font-semibold text-gray-400">{primaryJob.title}</span>
               )}
             </div>
-            <p className="whitespace-pre-line text-[11px] leading-relaxed text-gray-600">
+            <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-gray-600">
               {shown || "No description available."}
             </p>
             {isLong && (
               <button
                 type="button"
                 onClick={() => setDescExpanded((v) => !v)}
-                className="mt-1.5 text-[10.5px] font-bold text-green-600 hover:text-green-700"
+                className="mt-1.5 text-[12px] font-bold text-green-600 hover:text-green-700"
               >
                 {descExpanded ? "Show less" : "Show more"}
               </button>

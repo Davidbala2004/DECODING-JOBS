@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ListChecks, MapPin, Radio, Rocket, UserCog, Users2 } from "lucide-react";
+import { Sparkles, ListChecks, MapPin, Radio, Rocket, UserCog, Users2, Building2, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -40,7 +41,7 @@ function NavLink({
       <Icon className="relative h-4 w-4" />
       <span className="relative hidden sm:inline">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="relative rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+        <span className="relative rounded-full bg-green-100 px-1.5 py-0.5 text-[11px] font-bold text-green-700">
           {badge}
         </span>
       )}
@@ -48,6 +49,72 @@ function NavLink({
         <span className="absolute inset-x-2.5 -bottom-[9px] h-0.5 rounded-full bg-green-500 sm:inset-x-3" />
       )}
     </Link>
+  );
+}
+
+// "List your startup" and "For Recruiters" are company-side tools, not
+// job-seeker features — grouped under one indigo-accented menu (distinct
+// from the green job-seeker palette) so it's visually clear you're crossing
+// into a different audience's part of the product, and so the top-level bar
+// doesn't grow by one item every time a company-side feature ships.
+function ForCompaniesMenu({ active }: { active: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "relative flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all sm:px-3",
+          active || open ? "text-indigo-700 bg-indigo-50" : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-700"
+        )}
+      >
+        <Building2 className="h-4 w-4" />
+        <span className="hidden sm:inline">For Companies</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-[0_12px_40px_rgba(67,56,202,0.15)]"
+          style={{ animation: "fadeSlideUp 0.15s ease-out" }}
+        >
+          <Link
+            href="/register"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+          >
+            <Rocket className="h-4 w-4 shrink-0 text-indigo-500" />
+            <div>
+              <p className="font-semibold">List your startup</p>
+              <p className="text-[11px] text-gray-400">Get a pin on the map, start hiring</p>
+            </div>
+          </Link>
+          <div className="h-px bg-indigo-50" />
+          <Link
+            href="/recruiters"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+          >
+            <Users2 className="h-4 w-4 shrink-0 text-indigo-500" />
+            <div>
+              <p className="font-semibold">For Recruiters</p>
+              <p className="text-[11px] text-gray-400">Search and unlock candidate profiles</p>
+            </div>
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -87,17 +154,7 @@ export function TopNav() {
       </Link>
 
       <div className="flex items-center gap-1 ml-auto">
-        <NavLink href="/register" icon={Rocket} label="List your startup" active={pathname === "/register"} />
-
-        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
-
-        <NavLink href="/recruiters" icon={Users2} label="For Recruiters" active={pathname === "/recruiters"} />
-
-        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
-
         <NavLink href="/assistant" icon={Sparkles} label="AI Assistant" active={pathname === "/assistant"} />
-
-        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
         <NavLink
           href="/tracker"
@@ -107,9 +164,11 @@ export function TopNav() {
           active={pathname === "/tracker"}
         />
 
+        <NavLink href="/profile" icon={UserCog} label="Preferences" active={pathname === "/profile"} />
+
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
-        <NavLink href="/profile" icon={UserCog} label="Preferences" active={pathname === "/profile"} />
+        <ForCompaniesMenu active={pathname === "/register" || pathname === "/recruiters"} />
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 

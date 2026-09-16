@@ -18,9 +18,14 @@ import {
 export function SavedSearchesButton({
   filters,
   onApply,
+  grouped,
 }: {
   filters: SavedSearchFilters;
   onApply: (filters: SavedSearchFilters) => void;
+  /** True when nested inside another pill/card (e.g. the map toolbar's
+   * shared Tools group) — drops its own shadow/background so it doesn't
+   * look like a second floating button stacked on top of the group. */
+  grouped?: boolean;
 }) {
   const email = useIdentityStore((s) => s.email);
   const [open, setOpen] = useState(false);
@@ -66,8 +71,11 @@ export function SavedSearchesButton({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold shadow-lg transition-all duration-200",
-          open ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/25" : "bg-white text-gray-600 hover:bg-green-50 hover:text-green-700"
+          "flex items-center gap-1.5 text-sm font-semibold transition-all duration-200",
+          grouped ? "rounded-lg px-3 py-1.5" : "rounded-xl px-3.5 py-2 shadow-lg",
+          open
+            ? cn("bg-gradient-to-r from-green-500 to-emerald-600 text-white", !grouped && "shadow-green-500/25")
+            : cn("text-gray-600 hover:bg-green-50 hover:text-green-700", !grouped && "bg-white")
         )}
       >
         <Bookmark className="h-4 w-4" />
@@ -108,7 +116,7 @@ export function SavedSearchesButton({
                     type="button"
                     onClick={() => setAlertsEnabled((v) => !v)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors",
+                      "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12.5px] font-semibold transition-colors",
                       alertsEnabled ? "bg-green-50 text-green-700" : "text-gray-400 hover:text-gray-600"
                     )}
                   >
@@ -119,7 +127,7 @@ export function SavedSearchesButton({
                     type="button"
                     disabled={!label.trim() || createMutation.isPending}
                     onClick={() => createMutation.mutate()}
-                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm disabled:opacity-40"
+                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1.5 text-[12.5px] font-bold text-white shadow-sm disabled:opacity-40"
                   >
                     {createMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookmarkCheck className="h-3 w-3" />}
                     Save
@@ -134,7 +142,7 @@ export function SavedSearchesButton({
                   </div>
                 )}
                 {!isLoading && (!savedSearches || savedSearches.length === 0) && (
-                  <p className="px-2 py-3 text-center text-[11px] text-gray-400">No saved searches yet.</p>
+                  <p className="px-2 py-3 text-center text-[12.5px] text-gray-400">No saved searches yet.</p>
                 )}
                 {savedSearches?.map((s) => (
                   <div

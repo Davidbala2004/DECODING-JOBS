@@ -92,7 +92,7 @@ function JobResultCard({ job }: { job: ChatJobResult }) {
       }}
       className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.12)]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[11px] font-bold text-green-700">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
         {logo ? (
           <img src={logo} alt={job.company_name} className="h-full w-full object-contain p-1" />
         ) : (
@@ -101,10 +101,10 @@ function JobResultCard({ job }: { job: ChatJobResult }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12.5px] font-bold text-gray-900">{job.title}</p>
-        <p className="truncate text-[11px] text-gray-500">{job.company_name}</p>
+        <p className="truncate text-[12.5px] text-gray-500">{job.company_name}</p>
       </div>
       {job.city && (
-        <span className="flex shrink-0 items-center gap-0.5 text-[10px] text-gray-400">
+        <span className="flex shrink-0 items-center gap-0.5 text-[11.5px] text-gray-400">
           <MapPin className="h-2.5 w-2.5" />
           {job.city}
         </span>
@@ -127,7 +127,7 @@ function CompanyResultCard({ company }: { company: ChatCompanyResult }) {
       }}
       className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.12)]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[11px] font-bold text-green-700">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
         {logo ? (
           <img src={logo} alt={company.name} className="h-full w-full object-contain p-1" />
         ) : (
@@ -136,10 +136,10 @@ function CompanyResultCard({ company }: { company: ChatCompanyResult }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-        <p className="truncate text-[11px] text-gray-500">{company.sector || "—"} · {company.city || "—"}</p>
+        <p className="truncate text-[12.5px] text-gray-500">{company.sector || "—"} · {company.city || "—"}</p>
       </div>
       {company.active_job_count > 0 && (
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700">
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11.5px] font-bold text-green-700">
           <Briefcase className="h-2.5 w-2.5" />
           {company.active_job_count}
         </span>
@@ -354,7 +354,7 @@ export function ChatAssistant({
             <button
               type="button"
               onClick={() => setResumeMenuOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-[11px] font-semibold text-green-700 transition-all hover:bg-green-100"
+              className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-[12.5px] font-semibold text-green-700 transition-all hover:bg-green-100"
             >
               <FileText className="h-3 w-3" />
               <span className="max-w-[160px] truncate">{activeResume.filename}</span>
@@ -386,7 +386,7 @@ export function ChatAssistant({
                       setResumeMenuOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[11px] transition-colors",
+                      "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
                       r.id === activeResumeId ? "bg-green-50 font-semibold text-green-700" : "text-gray-600 hover:bg-gray-50"
                     )}
                   >
@@ -482,11 +482,11 @@ export function ChatAssistant({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">AI Job Search Assistant</p>
           {contextJob ? (
-            <p className="truncate text-[11px] text-green-600">
+            <p className="truncate text-[12.5px] text-green-600">
               Prepping for {contextJob.title} @ {contextJob.company.name}
             </p>
           ) : (
-            <p className="truncate text-[11px] text-gray-400">Ask about real jobs, companies, or interview prep</p>
+            <p className="truncate text-[12.5px] text-gray-400">Ask about real jobs, companies, or interview prep</p>
           )}
         </div>
         {hasStarted && (

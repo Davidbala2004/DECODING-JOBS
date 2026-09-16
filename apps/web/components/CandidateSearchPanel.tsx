@@ -25,7 +25,7 @@ const WORK_MODES = [
 const ANY_NOTICE_PERIODS = [{ value: "", label: "Any notice period" }, ...NOTICE_PERIODS.filter((n) => n.value)];
 
 const selectCls =
-  "flex h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
+  "flex h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40";
 
 function LinkBadge({ icon: Icon, verified }: { icon: React.ElementType; verified: boolean }) {
   return (
@@ -48,20 +48,20 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_8px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-xs font-bold text-green-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 text-xs font-bold text-indigo-700">
           {initials}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-gray-900">
             {candidate.target_roles[0] || "Job seeker"}
           </p>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[12.5px] text-gray-400">
             {formatExperience(candidate.experience_years)}
             {candidate.preferred_work_mode ? ` · ${candidate.preferred_work_mode}` : ""}
           </p>
         </div>
         {candidate.ats_score !== null && (
-          <span className="rounded-full bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700">
+          <span className="rounded-full bg-green-50 px-2 py-1 text-[11.5px] font-bold text-green-700">
             ATS {candidate.ats_score}
           </span>
         )}
@@ -70,7 +70,7 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
       {noticePeriodLabel(candidate.notice_period) && (
         <span
           className={cn(
-            "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+            "inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11.5px] font-bold",
             candidate.notice_period === "immediate" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
           )}
         >
@@ -82,7 +82,7 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
       {candidate.skills.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {candidate.skills.slice(0, 5).map((skill) => (
-            <span key={skill} className="rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+            <span key={skill} className="rounded-full bg-gray-50 px-2 py-0.5 text-[11.5px] font-medium text-gray-500">
               {skill}
             </span>
           ))}
@@ -94,16 +94,16 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
           <LinkBadge icon={Github} verified={candidate.github_verified} />
           <LinkBadge icon={Linkedin} verified={candidate.linkedin_verified} />
           <LinkBadge icon={Code2} verified={candidate.leetcode_verified} />
-          {verifiedCount > 0 && <span className="text-[10px] font-semibold text-green-600">{verifiedCount} verified</span>}
+          {verifiedCount > 0 && <span className="text-[11.5px] font-semibold text-green-600">{verifiedCount} verified</span>}
         </div>
         <button
           type="button"
           onClick={onView}
           className={cn(
-            "rounded-lg px-3 py-1.5 text-[11px] font-bold shadow-sm transition-all",
+            "rounded-lg px-3 py-1.5 text-[12.5px] font-bold shadow-sm transition-all",
             candidate.already_unlocked
               ? "bg-gray-900 text-white hover:bg-gray-800"
-              : "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/25 hover:shadow-md"
+              : "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-indigo-500/25 hover:shadow-md"
           )}
         >
           {candidate.already_unlocked ? "View profile" : "Unlock profile"}
@@ -139,20 +139,20 @@ export function CandidateSearchPanel() {
   });
 
   return (
-    <main className="scroll-thin flex flex-1 flex-col overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
+    <main className="scroll-thin flex flex-1 flex-col overflow-y-auto bg-gradient-to-b from-indigo-50/40 to-white">
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users2 className="h-5 w-5 text-green-600" />
+            <Users2 className="h-5 w-5 text-indigo-600" />
             <div>
               <h1 className="text-lg font-bold text-gray-900">Candidate search</h1>
-              <p className="text-[11px] text-gray-400">Searching as {companyName}</p>
+              <p className="text-[12.5px] text-gray-400">Searching as {companyName}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={clearRecruiterIdentity}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-gray-400 hover:bg-gray-50 hover:text-gray-600"
           >
             <LogOut className="h-3.5 w-3.5" /> Switch company
           </button>
@@ -190,7 +190,7 @@ export function CandidateSearchPanel() {
             type="button"
             onClick={() => setVerifiedOnly((v) => !v)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold transition-colors",
               verifiedOnly ? "bg-green-50 text-green-700" : "text-gray-400 hover:text-gray-600"
             )}
           >
@@ -200,7 +200,7 @@ export function CandidateSearchPanel() {
 
         {isLoading && (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
           </div>
         )}
         {isError && (

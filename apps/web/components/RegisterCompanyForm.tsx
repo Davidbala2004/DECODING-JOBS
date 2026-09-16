@@ -43,7 +43,7 @@ const WORK_MODES: { value: WorkMode; label: string }[] = [
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-gray-500">
+    <label className="mb-1.5 block text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
       {children} {required && <span className="text-green-500">*</span>}
     </label>
   );
@@ -161,7 +161,7 @@ export function RegisterCompanyForm() {
       </div>
 
       {/* Step indicator */}
-      <div className="mb-6 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+      <div className="mb-6 flex items-center justify-center gap-2 text-[12.5px] font-bold uppercase tracking-wide text-gray-400">
         <span className={cn("flex items-center gap-1", step !== "company" && "text-green-600")}>
           <span className={cn("flex h-5 w-5 items-center justify-center rounded-full", step !== "company" ? "bg-green-500 text-white" : "bg-gray-900 text-white")}>1</span>
           Company
@@ -187,7 +187,7 @@ export function RegisterCompanyForm() {
               value={founderEmail}
               onChange={(e) => setFounderEmail(e.target.value)}
             />
-            <p className="mt-1 text-[10.5px] text-gray-400">
+            <p className="mt-1 text-[12px] text-gray-400">
               Must match your company&apos;s website domain — that&apos;s how we verify it&apos;s really yours.
             </p>
           </div>
@@ -257,7 +257,7 @@ export function RegisterCompanyForm() {
                 <FieldLabel>Exact longitude</FieldLabel>
                 <Input type="number" step="any" placeholder="77.6412" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
               </div>
-              <p className="col-span-2 -mt-2 text-[10.5px] text-gray-400">
+              <p className="col-span-2 -mt-2 text-[12px] text-gray-400">
                 Right-click your office on{" "}
                 <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">
                   Google Maps

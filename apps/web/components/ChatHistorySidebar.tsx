@@ -76,7 +76,7 @@ export function ChatHistorySidebar({
                 <p className={cn("truncate text-[12.5px]", c.id === selectedId ? "font-semibold text-green-800" : "text-gray-700")}>
                   {c.title}
                 </p>
-                <p className="text-[10px] text-gray-400">{relativeTime(c.updated_at)}</p>
+                <p className="text-[11.5px] text-gray-400">{relativeTime(c.updated_at)}</p>
               </div>
             </button>
             <button
@@ -94,7 +94,7 @@ export function ChatHistorySidebar({
         ))}
 
         {conversations?.length === 0 && (
-          <p className="mt-4 px-2 text-center text-[11px] text-gray-300">No conversations yet</p>
+          <p className="mt-4 px-2 text-center text-[12.5px] text-gray-300">No conversations yet</p>
         )}
       </div>
     </div>
