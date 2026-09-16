@@ -12,6 +12,8 @@ import {
   ArrowRight,
   MapPin,
   Sparkles,
+  ChevronDown,
+  Plus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -52,12 +54,35 @@ const selectCls =
 const textareaCls =
   "flex w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
 
+function MoreDetailsToggle({
+  open,
+  onToggle,
+  label,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-1.5 self-start text-[12px] font-bold text-green-600 transition-colors hover:text-green-700"
+    >
+      {open ? <ChevronDown className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+      {label}
+    </button>
+  );
+}
+
 export function RegisterCompanyForm() {
   const router = useRouter();
   const setSelectedCompanyId = useMapSelectionStore((s) => s.setSelectedCompanyId);
   const [step, setStep] = useState<"company" | "role" | "done">("company");
   const [company, setCompany] = useState<Company | null>(null);
   const [founderEmail, setFounderEmail] = useState("");
+  const [showMoreCompanyDetails, setShowMoreCompanyDetails] = useState(false);
+  const [showMoreRoleDetails, setShowMoreRoleDetails] = useState(false);
 
   const [form, setForm] = useState({
     name: "", websiteUrl: "", description: "", sector: "", stage: "",
@@ -117,6 +142,12 @@ export function RegisterCompanyForm() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-14">
+      <style jsx>{`
+        @keyframes panelFadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25">
@@ -170,83 +201,92 @@ export function RegisterCompanyForm() {
               <FieldLabel required>Website</FieldLabel>
               <Input required placeholder="acme.com" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} />
             </div>
-
-            <div>
-              <FieldLabel>Sector</FieldLabel>
-              <select className={selectCls} value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
-                <option value="">Select…</option>
-                {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Stage</FieldLabel>
-              <select className={selectCls} value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })}>
-                <option value="">Select…</option>
-                {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div>
+            <div className="col-span-2">
               <FieldLabel required>City</FieldLabel>
               <select className={selectCls} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
                 {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <FieldLabel>Area</FieldLabel>
-              <Input placeholder="Koramangala" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} />
-            </div>
-
-            <div className="col-span-2">
-              <FieldLabel>Office address</FieldLabel>
-              <Input placeholder="100 Ft Road, Indiranagar, Bengaluru" value={form.streetAddress} onChange={(e) => setForm({ ...form, streetAddress: e.target.value })} />
-            </div>
-
-            <div>
-              <FieldLabel>Exact latitude</FieldLabel>
-              <Input type="number" step="any" placeholder="12.9716" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
-            </div>
-            <div>
-              <FieldLabel>Exact longitude</FieldLabel>
-              <Input type="number" step="any" placeholder="77.6412" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
-            </div>
-            <p className="col-span-2 -mt-2 text-[10.5px] text-gray-400">
-              Optional, but recommended: right-click your office on{" "}
-              <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">
-                Google Maps
-              </a>{" "}
-              and copy the coordinates shown at the top. Skip this and we&apos;ll place your pin near the
-              center of your city instead.
-            </p>
-
-            <div>
-              <FieldLabel>Team size</FieldLabel>
-              <select className={selectCls} value={form.teamSize} onChange={(e) => setForm({ ...form, teamSize: e.target.value })}>
-                <option value="">Select…</option>
-                {TEAM_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Founded year</FieldLabel>
-              <Input type="number" placeholder="2021" value={form.foundedYear} onChange={(e) => setForm({ ...form, foundedYear: e.target.value })} />
-            </div>
-
-            <div className="col-span-2">
-              <FieldLabel>LinkedIn</FieldLabel>
-              <Input placeholder="linkedin.com/company/acme" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} />
-            </div>
-
-            <div className="col-span-2">
-              <FieldLabel>About the company</FieldLabel>
-              <textarea
-                className={textareaCls}
-                rows={3}
-                placeholder="What does your company do?"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
           </div>
+
+          <MoreDetailsToggle
+            open={showMoreCompanyDetails}
+            onToggle={() => setShowMoreCompanyDetails((v) => !v)}
+            label={showMoreCompanyDetails ? "Hide extra details" : "Add sector, address, team size & more (optional)"}
+          />
+
+          {showMoreCompanyDetails && (
+            <div className="grid grid-cols-2 gap-3" style={{ animation: "panelFadeIn 0.25s ease-out both" }}>
+              <div>
+                <FieldLabel>Sector</FieldLabel>
+                <select className={selectCls} value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
+                  <option value="">Select…</option>
+                  {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Stage</FieldLabel>
+                <select className={selectCls} value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })}>
+                  <option value="">Select…</option>
+                  {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <FieldLabel>Area</FieldLabel>
+                <Input placeholder="Koramangala" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>Team size</FieldLabel>
+                <select className={selectCls} value={form.teamSize} onChange={(e) => setForm({ ...form, teamSize: e.target.value })}>
+                  <option value="">Select…</option>
+                  {TEAM_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+
+              <div className="col-span-2">
+                <FieldLabel>Office address</FieldLabel>
+                <Input placeholder="100 Ft Road, Indiranagar, Bengaluru" value={form.streetAddress} onChange={(e) => setForm({ ...form, streetAddress: e.target.value })} />
+              </div>
+
+              <div>
+                <FieldLabel>Exact latitude</FieldLabel>
+                <Input type="number" step="any" placeholder="12.9716" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>Exact longitude</FieldLabel>
+                <Input type="number" step="any" placeholder="77.6412" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
+              </div>
+              <p className="col-span-2 -mt-2 text-[10.5px] text-gray-400">
+                Right-click your office on{" "}
+                <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">
+                  Google Maps
+                </a>{" "}
+                and copy the coordinates shown at the top. Skip this and we&apos;ll place your pin near the
+                center of your city instead.
+              </p>
+
+              <div>
+                <FieldLabel>Founded year</FieldLabel>
+                <Input type="number" placeholder="2021" value={form.foundedYear} onChange={(e) => setForm({ ...form, foundedYear: e.target.value })} />
+              </div>
+              <div>
+                <FieldLabel>LinkedIn</FieldLabel>
+                <Input placeholder="linkedin.com/company/acme" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} />
+              </div>
+
+              <div className="col-span-2">
+                <FieldLabel>About the company</FieldLabel>
+                <textarea
+                  className={textareaCls}
+                  rows={3}
+                  placeholder="What does your company do?"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           {companyMutation.isError && (
             <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-[12px] text-red-600">
@@ -295,33 +335,42 @@ export function RegisterCompanyForm() {
                 onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel>Employment type</FieldLabel>
-                <select className={selectCls} value={roleForm.employmentType} onChange={(e) => setRoleForm({ ...roleForm, employmentType: e.target.value as EmploymentType })}>
-                  {EMPLOYMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <FieldLabel>Work mode</FieldLabel>
-                <select className={selectCls} value={roleForm.workMode} onChange={(e) => setRoleForm({ ...roleForm, workMode: e.target.value as WorkMode })}>
-                  <option value="">Not specified</option>
-                  {WORK_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <FieldLabel>Salary min (₹/yr)</FieldLabel>
-                <Input type="number" placeholder="800000" value={roleForm.salaryMin} onChange={(e) => setRoleForm({ ...roleForm, salaryMin: e.target.value })} />
-              </div>
-              <div>
-                <FieldLabel>Salary max (₹/yr)</FieldLabel>
-                <Input type="number" placeholder="1500000" value={roleForm.salaryMax} onChange={(e) => setRoleForm({ ...roleForm, salaryMax: e.target.value })} />
-              </div>
-              <div className="col-span-2">
-                <FieldLabel>Apply link</FieldLabel>
-                <Input placeholder="https://acme.com/careers/frontend-engineer" value={roleForm.applyUrl} onChange={(e) => setRoleForm({ ...roleForm, applyUrl: e.target.value })} />
-              </div>
+            <div>
+              <FieldLabel>Work mode</FieldLabel>
+              <select className={selectCls} value={roleForm.workMode} onChange={(e) => setRoleForm({ ...roleForm, workMode: e.target.value as WorkMode })}>
+                <option value="">Not specified</option>
+                {WORK_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
             </div>
+
+            <MoreDetailsToggle
+              open={showMoreRoleDetails}
+              onToggle={() => setShowMoreRoleDetails((v) => !v)}
+              label={showMoreRoleDetails ? "Hide extra details" : "Add employment type, salary & apply link (optional)"}
+            />
+
+            {showMoreRoleDetails && (
+              <div className="grid grid-cols-2 gap-3" style={{ animation: "panelFadeIn 0.25s ease-out both" }}>
+                <div>
+                  <FieldLabel>Employment type</FieldLabel>
+                  <select className={selectCls} value={roleForm.employmentType} onChange={(e) => setRoleForm({ ...roleForm, employmentType: e.target.value as EmploymentType })}>
+                    {EMPLOYMENT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <FieldLabel>Salary min (₹/yr)</FieldLabel>
+                  <Input type="number" placeholder="800000" value={roleForm.salaryMin} onChange={(e) => setRoleForm({ ...roleForm, salaryMin: e.target.value })} />
+                </div>
+                <div>
+                  <FieldLabel>Salary max (₹/yr)</FieldLabel>
+                  <Input type="number" placeholder="1500000" value={roleForm.salaryMax} onChange={(e) => setRoleForm({ ...roleForm, salaryMax: e.target.value })} />
+                </div>
+                <div className="col-span-2">
+                  <FieldLabel>Apply link</FieldLabel>
+                  <Input placeholder="https://acme.com/careers/frontend-engineer" value={roleForm.applyUrl} onChange={(e) => setRoleForm({ ...roleForm, applyUrl: e.target.value })} />
+                </div>
+              </div>
+            )}
 
             {jobMutation.isError && (
               <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-[12px] text-red-600">

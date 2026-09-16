@@ -86,11 +86,24 @@ function distanceKm(a, b) {
 
 const MAX_PLAUSIBLE_KM = 80;
 
+// A "successful" geocode is often not actually precise — Nominatim falls
+// back internally to a generic city/area centroid when it can't find the
+// specific place, and that centroid gets reused for many different
+// companies verbatim. Tracking every coordinate already handed out (city +
+// rounded to ~11m) and jittering on collision catches that case too, not
+// just the explicit "geocoding failed" path below — this is what actually
+// stacked 2000+ companies on ~50 identical points before this fix.
+function coordKey(city, lat, lng) {
+  return `${city}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
+}
+
 export async function geocodeCompanies(companies) {
   const results = new Map();
+  const usedCoords = new Set();
 
   for (const company of companies) {
     const cityCenter = CITY_CENTERS[company.city] || CITY_CENTERS.Bengaluru;
+    const city = company.city || "Bengaluru";
 
     // Try multiple query variants for better accuracy.
     const queries = [
@@ -100,10 +113,12 @@ export async function geocodeCompanies(companies) {
     ];
 
     let coords = null;
+    let wasGeocoded = false;
     for (const q of queries) {
       const candidate = await geocode(q, company.city || "Bengaluru");
       if (candidate && distanceKm(candidate, cityCenter) <= MAX_PLAUSIBLE_KM) {
         coords = candidate;
+        wasGeocoded = true;
         break;
       }
       if (candidate) {
@@ -113,14 +128,25 @@ export async function geocodeCompanies(companies) {
 
     // Fallback to city center if geocoding failed or every match was implausible.
     if (!coords) {
-      // Add small random offset so companies don't stack on top of each other.
+      coords = { lat: cityCenter.lat, lng: cityCenter.lng };
+    }
+
+    // Any coordinate — geocoded or fallback — that collides with one already
+    // handed out this run gets nudged apart so pins never stack exactly.
+    let key = coordKey(city, coords.lat, coords.lng);
+    if (usedCoords.has(key)) {
       coords = {
-        lat: cityCenter.lat + (Math.random() - 0.5) * 0.02,
-        lng: cityCenter.lng + (Math.random() - 0.5) * 0.02,
+        lat: coords.lat + (Math.random() - 0.5) * 0.02,
+        lng: coords.lng + (Math.random() - 0.5) * 0.02,
       };
-      console.log(`  ⚠ Could not geocode "${company.name}" — using city center offset`);
-    } else {
+      key = coordKey(city, coords.lat, coords.lng);
+    }
+    usedCoords.add(key);
+
+    if (wasGeocoded) {
       console.log(`  ✓ Geocoded "${company.name}" → (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+    } else {
+      console.log(`  ⚠ Could not geocode "${company.name}" — using city center offset`);
     }
 
     results.set(company.name, coords);
