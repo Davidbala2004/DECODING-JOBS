@@ -13,7 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X, FileText } from "lucide-react";
+import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X, FileText, HelpCircle, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useIdentityStore } from "@/lib/identityStore";
@@ -121,11 +121,38 @@ function RoundStepper({ applicationId, round }: { applicationId: number; round: 
 // Card
 // ---------------------------------------------------------------------------
 
+// After a few days sitting in "Saved" with no status change, a card is more
+// likely a click-and-bailed link than a real in-progress application — this
+// nudges the user to confirm one way or the other instead of the board
+// silently filling up with stale saves.
+const APPLY_NUDGE_AFTER_DAYS = 3;
+
 function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id });
+  const queryClient = useQueryClient();
+  const email = useIdentityStore((s) => s.email);
   const company = card.job.company;
   const logo = logoUrlFor(company.website_url);
   const days = daysSince(card.applied_at);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const showApplyNudge = card.status === "saved" && days >= APPLY_NUDGE_AFTER_DAYS && !nudgeDismissed;
+
+  const markAppliedMutation = useMutation({
+    mutationFn: () => updateApplicationStatus({ applicationId: card.id, status: "applied" }),
+    onMutate: async () => {
+      const key = ["applicationBoard", email];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ApplicationBoardCard[]>(key);
+      queryClient.setQueryData<ApplicationBoardCard[]>(key, (old) =>
+        old?.map((c) => (c.id === card.id ? { ...c, status: "applied" as ApplicationStatus } : c))
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["applicationBoard", email], context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
+  });
 
   return (
     <div
@@ -180,6 +207,34 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
 
       {card.status === "interview" && (
         <RoundStepper applicationId={card.id} round={card.interview_round ?? 1} />
+      )}
+
+      {showApplyNudge && (
+        <div
+          className="mt-2.5 flex flex-col gap-1.5 rounded-xl border border-amber-100 bg-amber-50/60 p-2"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <p className="flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+            <HelpCircle className="h-3 w-3 shrink-0" /> Did you apply to this one?
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              disabled={markAppliedMutation.isPending}
+              onClick={() => markAppliedMutation.mutate()}
+              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-600 py-1 text-[11px] font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+            >
+              {markAppliedMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, mark applied"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNudgeDismissed(true)}
+              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              Not yet
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-2.5 flex items-center justify-between">
