@@ -148,32 +148,6 @@ function CompanyResultCard({ company }: { company: ChatCompanyResult }) {
   );
 }
 
-// A small grid of dots that pulse in a diagonal wave (row+col delay) instead
-// of a plain 3-dot bounce — reads as "thinking," not just "loading," and is
-// pure CSS (opacity/transform only) so it stays smooth with no JS-driven
-// re-renders while a response streams in.
-const DOT_MATRIX_ROWS = 3;
-const DOT_MATRIX_COLS = 4;
-
-function DotMatrixLoader() {
-  return (
-    <div className="grid grid-cols-4 gap-1">
-      {Array.from({ length: DOT_MATRIX_ROWS * DOT_MATRIX_COLS }).map((_, i) => {
-        const row = Math.floor(i / DOT_MATRIX_COLS);
-        const col = i % DOT_MATRIX_COLS;
-        const delay = (row + col) * 0.08;
-        return (
-          <span
-            key={i}
-            className="h-1.5 w-1.5 rounded-full bg-green-500"
-            style={{ animation: `dotMatrixPulse 1.4s ease-in-out ${delay}s infinite` }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
 export function ChatAssistant({
   jobId,
   conversationId,
@@ -474,9 +448,9 @@ export function ChatAssistant({
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes dotMatrixPulse {
-          0%, 100% { opacity: 0.2; transform: scale(0.85); }
-          50% { opacity: 1; transform: scale(1); }
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
         }
         @keyframes panelFadeIn {
           from { opacity: 0; transform: translateY(6px); }
@@ -610,8 +584,14 @@ export function ChatAssistant({
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
                     <Sparkles className="h-3.5 w-3.5" />
                   </div>
-                  <div className="flex items-center rounded-2xl border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
-                    <DotMatrixLoader />
+                  <div className="flex items-center gap-1 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="h-1.5 w-1.5 rounded-full bg-green-400"
+                        style={{ animation: `typingBounce 1.2s ease-in-out ${i * 0.15}s infinite` }}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
