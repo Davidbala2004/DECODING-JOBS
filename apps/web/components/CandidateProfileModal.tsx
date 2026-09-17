@@ -29,7 +29,7 @@ function LinkRow({ icon: Icon, url, verified }: { icon: React.ElementType; url: 
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50/60"
+      className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:border-green-200 hover:bg-green-50/60"
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate flex-1">{url}</span>
@@ -74,7 +74,7 @@ export function CandidateProfileModal({ candidateId, onClose }: { candidateId: n
         <div className="p-5">
           {mutation.isPending && (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-gray-400">
-              <Loader2 className="h-5 w-5 animate-spin text-indigo-500" /> Unlocking profile…
+              <Loader2 className="h-5 w-5 animate-spin text-green-500" /> Unlocking profile…
             </div>
           )}
 
@@ -89,7 +89,7 @@ export function CandidateProfileModal({ candidateId, onClose }: { candidateId: n
             <div className="flex flex-col gap-4">
               <div>
                 <h3 className="text-base font-bold text-gray-900">{mutation.data.full_name}</h3>
-                <a href={`mailto:${mutation.data.email}`} className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:underline">
+                <a href={`mailto:${mutation.data.email}`} className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-green-600 hover:underline">
                   <Mail className="h-3 w-3" /> {mutation.data.email}
                 </a>
               </div>

@@ -53,9 +53,7 @@ function NavLink({
 }
 
 // "List your startup" and "For Recruiters" are company-side tools, not
-// job-seeker features — grouped under one indigo-accented menu (distinct
-// from the green job-seeker palette) so it's visually clear you're crossing
-// into a different audience's part of the product, and so the top-level bar
+// job-seeker features — grouped under one menu so the top-level bar
 // doesn't grow by one item every time a company-side feature ships.
 function ForCompaniesMenu({ active }: { active: boolean }) {
   const [open, setOpen] = useState(false);
@@ -76,7 +74,7 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "relative flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all sm:px-3",
-          active || open ? "text-indigo-700 bg-indigo-50" : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-700"
+          active || open ? "text-green-700 bg-green-50" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
         )}
       >
         <Building2 className="h-4 w-4" />
@@ -86,27 +84,27 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
 
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-[0_12px_40px_rgba(67,56,202,0.15)]"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-green-100 bg-white shadow-[0_12px_40px_rgba(34,197,94,0.15)]"
           style={{ animation: "fadeSlideUp 0.15s ease-out" }}
         >
           <Link
             href="/register"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
           >
-            <Rocket className="h-4 w-4 shrink-0 text-indigo-500" />
+            <Rocket className="h-4 w-4 shrink-0 text-green-500" />
             <div>
               <p className="font-semibold">List your startup</p>
               <p className="text-[11px] text-gray-400">Get a pin on the map, start hiring</p>
             </div>
           </Link>
-          <div className="h-px bg-indigo-50" />
+          <div className="h-px bg-green-50" />
           <Link
             href="/recruiters"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
           >
-            <Users2 className="h-4 w-4 shrink-0 text-indigo-500" />
+            <Users2 className="h-4 w-4 shrink-0 text-green-500" />
             <div>
               <p className="font-semibold">For Recruiters</p>
               <p className="text-[11px] text-gray-400">Search and unlock candidate profiles</p>

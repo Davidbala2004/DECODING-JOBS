@@ -20,7 +20,7 @@ function RecruiterGate() {
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6" style={{ animation: "cardFadeIn 0.4s ease-out both" }}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/25">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25">
         <Building2 className="h-6 w-6 text-white" />
       </div>
       <div className="text-center">
@@ -44,7 +44,7 @@ function RecruiterGate() {
         <button
           type="submit"
           disabled={mutation.isPending || !email.trim()}
-          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl disabled:opacity-60"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-sm font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl disabled:opacity-60"
         >
           {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
           Verify company
@@ -60,7 +60,7 @@ function RecruiterGate() {
 
       <p className="max-w-xs text-center text-[12.5px] text-gray-400">
         Haven&apos;t registered your company yet?{" "}
-        <a href="/register" className="font-semibold text-indigo-600 hover:underline">
+        <a href="/register" className="font-semibold text-green-600 hover:underline">
           Do that first
         </a>
         .

@@ -25,7 +25,7 @@ const WORK_MODES = [
 const ANY_NOTICE_PERIODS = [{ value: "", label: "Any notice period" }, ...NOTICE_PERIODS.filter((n) => n.value)];
 
 const selectCls =
-  "flex h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40";
+  "flex h-9 rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
 
 function LinkBadge({ icon: Icon, verified }: { icon: React.ElementType; verified: boolean }) {
   return (
@@ -48,7 +48,7 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_8px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 text-xs font-bold text-indigo-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-xs font-bold text-green-700">
           {initials}
         </div>
         <div className="min-w-0 flex-1">
@@ -103,7 +103,7 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
             "rounded-lg px-3 py-1.5 text-[12.5px] font-bold shadow-sm transition-all",
             candidate.already_unlocked
               ? "bg-gray-900 text-white hover:bg-gray-800"
-              : "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-indigo-500/25 hover:shadow-md"
+              : "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/25 hover:shadow-md"
           )}
         >
           {candidate.already_unlocked ? "View profile" : "Unlock profile"}
@@ -139,11 +139,11 @@ export function CandidateSearchPanel() {
   });
 
   return (
-    <main className="scroll-thin flex flex-1 flex-col overflow-y-auto bg-gradient-to-b from-indigo-50/40 to-white">
+    <main className="scroll-thin flex flex-1 flex-col overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users2 className="h-5 w-5 text-indigo-600" />
+            <Users2 className="h-5 w-5 text-green-600" />
             <div>
               <h1 className="text-lg font-bold text-gray-900">Candidate search</h1>
               <p className="text-[12.5px] text-gray-400">Searching as {companyName}</p>
@@ -200,7 +200,7 @@ export function CandidateSearchPanel() {
 
         {isLoading && (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-green-500" />
           </div>
         )}
         {isError && (
