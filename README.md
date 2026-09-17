@@ -20,7 +20,7 @@ A map-based job search command center for tech students. Explore real companies 
 - **1-Click Apply** — Submit applications with resume selection
 - **List Your Startup** (`/register`) — founders self-register their company and post roles directly, verified instantly by matching their work-email domain to the company's website (see [below](#list-your-startup-register))
 - **AI Job Search Assistant** (`/assistant`) — chat grounded in this app's real data, resume upload + ATS scoring + iterative AI rewriting, and company/role-specific interview prep (see [below](#ai-job-search-assistant-assistant))
-- **Application Tracker** (`/tracker`) — a Kanban board with email-based auto-advancement from forwarded interview emails, showing which resume was used per application
+- **Application Tracker** (`/tracker`) — a Kanban board with email-based auto-advancement from forwarded interview emails, showing which resume was used per application, and a "Did you apply?" nudge on cards that have sat in Saved for 3+ days
 - **Google Sign-In** — a Google button on the identity gate as a faster, more trustworthy alternative to typing an email; verifies the same underlying account either way (see [below](#identity-and-preferences-google-sign-in))
 - **Preferences** (`/profile`) — target roles, cities, work mode, experience, notice period, salary, skills, and GitHub/LinkedIn/LeetCode links (auto-verified for reachability); personalizes the AI Assistant and, via **"For You,"** the map itself (see [below](#identity-and-preferences-google-sign-in))
 - **Saved Searches & Job Alerts** — save the map's current filter combo as a one-click shortcut, optionally with email alerts when new matching jobs appear (see [below](#saved-searches--job-alerts))
@@ -354,6 +354,8 @@ For cities the pipeline can't reach (most tier-2 hubs have very few companies on
 
 **Description cleanup**: Greenhouse's API returns job descriptions HTML-*entity*-encoded (literal `&lt;div&gt;` text, not real `<div>` tags), which a plain tag-stripping regex can't catch — the raw markup used to leak straight into the UI. `cleanJobDescription()` in the script decodes entities first, turns block-level tags into real line breaks (so paragraph/list structure survives), then strips what's left.
 
+**Pin-stacking fix**: `geocode.mjs` tracks every coordinate it hands out during a run and nudges apart any company whose result collides with one already used — this catches Nominatim silently resolving to a generic city/area centroid for many different companies (previously only the explicit "geocoding failed" path got an anti-stacking jitter, so a "successful" but imprecise match could still stack hundreds of companies on one point, collapsing into a single map pin at high zoom instead of breaking apart).
+
 ```bash
 cd scripts
 npm install
@@ -385,6 +387,8 @@ This re-runs the fetcher on a 6-hour loop against the running core-api.
 ## Application Tracker & Email-Based Interview Tracking
 
 The Application Tracker (`/tracker`) is a Kanban board (Saved → Applied → Interviewing → Offered) identified by email — no password, no login. Every user gets a personal forwarding address (`u-{token}@{INBOUND_EMAIL_DOMAIN}`); forwarding a company's interview email to it lets the backend auto-advance that card's round/status instead of clicking through manually.
+
+**"Did you apply?" nudge**: a card sitting in **Saved** for 3+ days with no status change is more likely a click-and-bailed link than an active application, so it surfaces an inline prompt — one click marks it **Applied** (reusing the same status-update endpoint the drag-and-drop board uses), or dismiss it for the session with "Not yet." Purely derived from the existing `applied_at` timestamp, no extra schema.
 
 **To enable email extraction** (free, no paid API key): set `GROQ_API_KEY` in `services/core-api/.env.local` (see [Personal secrets](#personal-secrets-services-core-api-envlocal) above) — sign up free at [console.groq.com](https://console.groq.com). Without it, the webhook still works but logs an unmatched, unextracted event instead of erroring.
 
@@ -457,11 +461,11 @@ The reverse of the map: instead of a job seeker browsing companies, a company's 
 
 ## List Your Startup (`/register`)
 
-A founder self-service flow — the primary way new companies and roles get onto the map without needing a scraper or an admin queue.
+A founder self-service flow — the primary way new companies and roles get onto the map without needing a scraper or an admin queue. Reachable from the top nav's **For Companies** menu, grouped there together with [For Recruiters](#recruiter-candidate-search-recruiters) so the job-seeker nav doesn't grow by one item every time a company-side feature ships.
 
-1. **Register the company** — name, website, sector/stage/city/area, optional exact office coordinates (falls back to a jittered city-center placement if omitted), and the founder's **work email**.
+1. **Register the company** — only name, website, and city are required up front; sector, stage, area, exact office coordinates, team size, founded year, LinkedIn, and description all live behind an "Add more details (optional)" toggle instead of 13 fields shown at once. Coordinates fall back to a jittered city-center placement if omitted.
 2. **Verification** — the founder's email domain must match the company's website domain (`you@acme.com` for `acme.com`). Personal providers (Gmail, Yahoo, Outlook, etc.) are rejected outright, and a domain mismatch gets a specific, actionable error — no admin review needed, but also no way to claim a company you don't control the domain for.
-3. **Post roles** — once verified, the founder can add open roles directly; every posting re-verifies the founder's email against that specific company's domain, so only whoever controls the domain can add roles to it.
+3. **Post roles** — same progressive-disclosure pattern: title, description, and work mode up front; employment type, salary range, and apply link behind their own optional toggle. Every posting re-verifies the founder's email against that specific company's domain, so only whoever controls the domain can add roles to it.
 
 This is intentionally the long-term, sustainable data source for cities the scraper pipeline doesn't reach (see [Real Data Ingestion](#real-data-ingestion) below) — it's first-party (the company itself), has no third-party licensing concerns, and can't go stale the way an aggregated feed can.
 
