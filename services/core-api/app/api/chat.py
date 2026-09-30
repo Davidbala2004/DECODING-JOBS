@@ -11,12 +11,12 @@ import json
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.users import get_or_create_user
+from app.core.security import optional_session, require_session
 from app.db.session import get_db
 from app.models.domain import ChatConversation, ChatMessageRecord, Company, Job, Resume, User
 from app.schemas import (
@@ -323,14 +323,11 @@ async def _persist_turn(
 )
 async def list_conversations(
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[ChatConversation]:
-    user = await get_or_create_user(db, email)
-    await db.commit()
-
     result = await db.execute(
         select(ChatConversation)
-        .where(ChatConversation.user_id == user.id)
+        .where(ChatConversation.user_id == current_user.id)
         .order_by(ChatConversation.updated_at.desc())
     )
     return list(result.scalars().all())
@@ -344,12 +341,9 @@ async def list_conversations(
 async def get_conversation_messages(
     conversation_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[ChatMessageRecord]:
-    user = await get_or_create_user(db, email)
-    await db.commit()
-
-    conversation = await _get_owned_conversation(db, conversation_id, user.id)
+    conversation = await _get_owned_conversation(db, conversation_id, current_user.id)
     if conversation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
@@ -370,12 +364,9 @@ async def get_conversation_messages(
 async def delete_conversation(
     conversation_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> None:
-    user = await get_or_create_user(db, email)
-    await db.commit()
-
-    conversation = await _get_owned_conversation(db, conversation_id, user.id)
+    conversation = await _get_owned_conversation(db, conversation_id, current_user.id)
     if conversation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
@@ -390,15 +381,15 @@ async def delete_conversation(
     summary="Log a turn that didn't go through /chat (e.g. a resume-upload attachment)",
 )
 async def append_message(
-    payload: ChatMessageAppendRequest, db: Annotated[AsyncSession, Depends(get_db)]
+    payload: ChatMessageAppendRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> ChatMessageAppendResponse:
-    user = await get_or_create_user(db, payload.user_email)
-
     conversation: ChatConversation | None = None
     if payload.conversation_id is not None:
-        conversation = await _get_owned_conversation(db, payload.conversation_id, user.id)
+        conversation = await _get_owned_conversation(db, payload.conversation_id, current_user.id)
     if conversation is None:
-        conversation = ChatConversation(user_id=user.id, title=_conversation_title(payload.content))
+        conversation = ChatConversation(user_id=current_user.id, title=_conversation_title(payload.content))
         db.add(conversation)
         await db.flush()
 
@@ -408,30 +399,29 @@ async def append_message(
     return ChatMessageAppendResponse(conversation_id=conversation.id, message_id=message.id)
 
 
-async def _run_chat(payload: ChatRequest, db: AsyncSession) -> ChatResponse:
+async def _run_chat(payload: ChatRequest, db: AsyncSession, user: User | None) -> ChatResponse:
     system_content = _SYSTEM_PROMPT
 
-    if payload.user_email:
-        user_result = await db.execute(select(User).where(User.email == payload.user_email.strip().lower()))
-        user = user_result.scalar_one_or_none()
-        if user and (user.target_roles or user.preferred_cities or user.skills or user.min_salary or user.preferred_work_mode):
-            prefs = []
-            if user.target_roles:
-                prefs.append(f"target roles: {', '.join(user.target_roles)}")
-            if user.preferred_cities:
-                prefs.append(f"preferred cities: {', '.join(user.preferred_cities)}")
-            if user.preferred_work_mode:
-                prefs.append(f"preferred work mode: {user.preferred_work_mode}")
-            if user.min_salary:
-                prefs.append(f"minimum salary: ₹{user.min_salary:,}/yr")
-            if user.skills:
-                prefs.append(f"skills: {', '.join(user.skills)}")
-            system_content += (
-                "\n\nThe user has saved these preferences (from their Preferences page) — use them to "
-                "narrow search/recommendations automatically when relevant, without making them repeat "
-                "this; but still follow whatever they explicitly ask for in the conversation over these "
-                f"defaults if the two conflict: {'; '.join(prefs)}."
-            )
+    if user is not None and (
+        user.target_roles or user.preferred_cities or user.skills or user.min_salary or user.preferred_work_mode
+    ):
+        prefs = []
+        if user.target_roles:
+            prefs.append(f"target roles: {', '.join(user.target_roles)}")
+        if user.preferred_cities:
+            prefs.append(f"preferred cities: {', '.join(user.preferred_cities)}")
+        if user.preferred_work_mode:
+            prefs.append(f"preferred work mode: {user.preferred_work_mode}")
+        if user.min_salary:
+            prefs.append(f"minimum salary: ₹{user.min_salary:,}/yr")
+        if user.skills:
+            prefs.append(f"skills: {', '.join(user.skills)}")
+        system_content += (
+            "\n\nThe user has saved these preferences (from their Preferences page) — use them to "
+            "narrow search/recommendations automatically when relevant, without making them repeat "
+            "this; but still follow whatever they explicitly ask for in the conversation over these "
+            f"defaults if the two conflict: {'; '.join(prefs)}."
+        )
 
     if payload.resume_id is not None:
         resume = await db.get(Resume, payload.resume_id)
@@ -534,13 +524,17 @@ async def _run_chat(payload: ChatRequest, db: AsyncSession) -> ChatResponse:
 
 
 @router.post("", response_model=ChatResponse, summary="Chat with the AI Job Search Assistant")
-async def chat(payload: ChatRequest, db: Annotated[AsyncSession, Depends(get_db)]) -> ChatResponse:
-    response = await _run_chat(payload, db)
+async def chat(
+    payload: ChatRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(optional_session)],
+) -> ChatResponse:
+    response = await _run_chat(payload, db, current_user)
 
-    # Persist history only when identified — anonymous chat (no user_email)
+    # Persist history only when signed in — anonymous chat (no session)
     # stays exactly as stateless as before this feature existed.
-    if payload.user_email:
-        user = await get_or_create_user(db, payload.user_email)
+    if current_user is not None:
+        user = current_user
 
         conversation: ChatConversation | None = None
         if payload.conversation_id is not None:

@@ -161,7 +161,10 @@ class Job(Base):
         nullable=False,
         default=EmploymentType.FULL_TIME,
     )
-    min_experience_years: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    # NULL means "unknown," not "0 years required" — Adzuna (97% of ingested
+    # jobs) has no experience field at all, so a NOT-NULL default of 0 would
+    # silently misrepresent every one of those jobs as fresher-friendly.
+    min_experience_years: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     salary_min: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     salary_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     work_mode: Mapped[WorkMode | None] = mapped_column(
@@ -336,6 +339,49 @@ class CandidateUnlock(Base):
     )
 
     company: Mapped["Company"] = relationship()
+    user: Mapped["User"] = relationship()
+
+
+class MagicLinkToken(Base):
+    """A single-use, short-lived token emailed to prove mailbox ownership.
+
+    Only the SHA-256 hash is stored — the raw token exists only in the
+    emailed link and the HTTP response, never persisted. See app/services/auth.py.
+    """
+
+    __tablename__ = "magic_link_tokens"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class Session(Base):
+    """A logged-in bearer session, issued after a magic-link click or a
+    verified Google sign-in — the single source of truth for "who is this"
+    that replaced trusting a bare client-supplied email string.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
     user: Mapped["User"] = relationship()
 
 

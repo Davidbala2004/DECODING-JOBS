@@ -83,7 +83,7 @@ export function ProfileWorkspace() {
   const email = useIdentityStore((s) => s.email);
 
   if (!email) {
-    return <EmailGate title="Your preferences" subtitle="Sign in with Google to save your job-search preferences" />;
+    return <EmailGate title="Your preferences" subtitle="Sign in to save your job-search preferences" />;
   }
 
   return <ProfileForm email={email} />;
@@ -93,7 +93,7 @@ function ProfileForm({ email }: { email: string }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["preferences", email],
-    queryFn: () => getPreferences(email),
+    queryFn: () => getPreferences(),
   });
 
   const [targetRoles, setTargetRoles] = useState("");
@@ -129,7 +129,6 @@ function ProfileForm({ email }: { email: string }) {
   const mutation = useMutation({
     mutationFn: () =>
       updatePreferences({
-        email,
         profileVisibleToRecruiters: visibleToRecruiters,
         targetRoles: targetRoles.split(",").map((s) => s.trim()).filter(Boolean),
         skills: skills.split(",").map((s) => s.trim()).filter(Boolean),

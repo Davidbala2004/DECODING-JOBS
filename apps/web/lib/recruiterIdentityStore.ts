@@ -2,27 +2,27 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface RecruiterIdentityStore {
-  email: string | null;
   companyId: number | null;
   companyName: string | null;
-  setRecruiterIdentity: (email: string, companyId: number, companyName: string) => void;
-  clearRecruiterIdentity: () => void;
+  setRecruiterCompany: (companyId: number, companyName: string) => void;
+  clearRecruiterCompany: () => void;
 }
 
 /**
- * Separate from useIdentityStore (job-seeker identity) — a recruiter's
- * session is verified against a registered company's email domain, not a
- * plain email, so it's kept in its own localStorage key. The same person
- * could plausibly be signed in as both a job seeker and a recruiter.
+ * Which company a signed-in user is acting as a recruiter for — separate
+ * from useIdentityStore only because "which company" is its own concept on
+ * top of identity, not a second identity. The actual session token (proof
+ * of who's signed in) lives in useIdentityStore and is shared: a recruiter
+ * signs in exactly the same way a job seeker does (magic link / Google),
+ * then /recruiters/identify resolves the company for that same session.
  */
 export const useRecruiterIdentityStore = create<RecruiterIdentityStore>()(
   persist(
     (set) => ({
-      email: null,
       companyId: null,
       companyName: null,
-      setRecruiterIdentity: (email, companyId, companyName) => set({ email, companyId, companyName }),
-      clearRecruiterIdentity: () => set({ email: null, companyId: null, companyName: null }),
+      setRecruiterCompany: (companyId, companyName) => set({ companyId, companyName }),
+      clearRecruiterCompany: () => set({ companyId: null, companyName: null }),
     }),
     { name: "decoding-jobs-recruiter-identity" }
   )

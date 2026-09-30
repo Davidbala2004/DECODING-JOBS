@@ -36,13 +36,13 @@ export function SavedSearchesButton({
 
   const { data: savedSearches, isLoading } = useQuery({
     queryKey: ["savedSearches", email],
-    queryFn: () => listSavedSearches(email as string),
+    queryFn: () => listSavedSearches(),
     enabled: !!email && open,
   });
 
   const createMutation = useMutation({
     mutationFn: () =>
-      createSavedSearch({ email: email as string, label: label.trim(), filters, emailAlertsEnabled: alertsEnabled }),
+      createSavedSearch({ label: label.trim(), filters, emailAlertsEnabled: alertsEnabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedSearches", email] });
       setLabel("");
@@ -51,7 +51,7 @@ export function SavedSearchesButton({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteSavedSearch({ id, email: email as string }),
+    mutationFn: (id: number) => deleteSavedSearch({ id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["savedSearches", email] }),
   });
 

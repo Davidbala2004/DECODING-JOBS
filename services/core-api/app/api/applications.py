@@ -2,14 +2,14 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.users import get_or_create_user
+from app.core.security import optional_session, require_session
 from app.db.session import get_db
-from app.models.domain import Application, ApplicationStatus, EmailEvent, Job
+from app.models.domain import Application, ApplicationStatus, EmailEvent, Job, User
 from app.schemas import (
     ApplicationBoardRead,
     ApplicationRead,
@@ -25,19 +25,14 @@ router = APIRouter(prefix="/applications", tags=["applications"])
 @router.get(
     "/board",
     response_model=list[ApplicationBoardRead],
-    summary="List a user's applications for the Kanban tracker, newest-moved first",
+    summary="List the signed-in user's applications for the Kanban tracker, newest-moved first",
 )
 async def get_board(
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3, description="Identifies the tracker owner"),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[Application]:
-    """Returns every Saved/Applied/Interviewing/Offered card for this email.
-
-    Phase 1 has no login — `email` alone (via get_or_create_user) is the
-    tracker's identity, matching the map's 1-Click Apply flow.
-    """
-    user = await get_or_create_user(db, email)
-    await db.commit()
+    """Returns every Saved/Applied/Interviewing/Offered card for the signed-in user."""
+    user = current_user
 
     result = await db.execute(
         select(Application)
@@ -68,13 +63,14 @@ async def get_board(
 async def save_job(
     payload: ApplicationSaveRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Application:
     """Idempotent: re-saving a job you've already saved/applied to just returns it."""
     job = await db.get(Job, payload.job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job {payload.job_id} not found")
 
-    user = await get_or_create_user(db, payload.user_email)
+    user = current_user
 
     existing = await db.execute(
         select(Application).where(Application.job_id == payload.job_id, Application.user_id == user.id)
@@ -104,12 +100,17 @@ async def update_status(
     application_id: int,
     payload: ApplicationStatusUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Application:
     application = await db.get(Application, application_id)
     if application is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Application {application_id} not found"
         )
+    if application.user_id != current_user.id:
+        # Previously this endpoint took no identity at all — anyone who
+        # guessed an application_id could move any user's card.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your application.")
 
     application.status = payload.status
     # Entering Interviewing for the first time starts at Round 1; leaving it
@@ -135,12 +136,15 @@ async def update_round(
     application_id: int,
     payload: ApplicationRoundUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Application:
     application = await db.get(Application, application_id)
     if application is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Application {application_id} not found"
         )
+    if application.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your application.")
 
     application.interview_round = payload.interview_round
     await db.commit()
@@ -162,14 +166,17 @@ async def update_round(
 async def submit_application(
     payload: ApplicationSubmitRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User | None, Depends(optional_session)],
 ) -> Application:
     """Creates (or advances) an Application row with status 'applied'.
 
-    If `user_email` is supplied and that job was already saved/applied to by
-    the same user, this updates that existing row in place — so bookmarking
-    a job in the tracker and later applying doesn't create a duplicate card.
-    Omitting `user_email` submits anonymously, same as before Phase 1's
-    tracker existed.
+    Identity comes from the session, if one is present — never from a
+    client-supplied email — so this can no longer be used to add a bogus
+    row to someone else's tracker board. Signing in is still optional here:
+    with no session, this submits anonymously (user_id NULL), same as
+    before the tracker existed, for a true zero-friction 1-click apply.
+    If that job was already saved/applied to by the same signed-in user,
+    this updates that existing row in place instead of duplicating it.
     """
     job = await db.get(Job, payload.job_id)
     if job is None:
@@ -179,10 +186,9 @@ async def submit_application(
         )
 
     application = None
-    if payload.user_email:
-        user = await get_or_create_user(db, payload.user_email)
+    if current_user is not None:
         existing = await db.execute(
-            select(Application).where(Application.job_id == payload.job_id, Application.user_id == user.id)
+            select(Application).where(Application.job_id == payload.job_id, Application.user_id == current_user.id)
         )
         application = existing.scalar_one_or_none()
 
@@ -192,7 +198,7 @@ async def submit_application(
     else:
         application = Application(
             job_id=payload.job_id,
-            user_id=user.id if payload.user_email else None,
+            user_id=current_user.id if current_user else None,
             resume_filename=payload.resume_filename,
             status=ApplicationStatus.APPLIED,
         )

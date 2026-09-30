@@ -10,7 +10,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.api import alerts, applications, chat, companies, emails, jobs, logos, recruiters, resumes, users
+from app.api import alerts, applications, auth, chat, companies, emails, jobs, logos, recruiters, resumes, users
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -58,6 +58,7 @@ app.include_router(resumes.router, prefix=settings.API_V1_PREFIX)
 app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(alerts.router, prefix=settings.API_V1_PREFIX)
 app.include_router(recruiters.router, prefix=settings.API_V1_PREFIX)
+app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.exception_handler(Exception)

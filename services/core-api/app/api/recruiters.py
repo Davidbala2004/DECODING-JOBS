@@ -2,10 +2,13 @@
 job seekers by role/experience/work-mode fit, then "unlocks" a promising
 candidate to see their full profile and resume.
 
-Identity reuses the same founder-domain verification already built for
-company registration (see services/company_verification.py) — there is no
-separate recruiter login/session, this is re-checked on every request, same
-as the rest of this app's passwordless identity model.
+Identity is a real session (require_session) — the recruiter must have
+clicked a magic link or signed in with Google for *that* email, so the
+domain-match check below (reusing the founder-registration verification
+from services/company_verification.py) runs against a proven mailbox, not
+a client-supplied string anyone could type. Before this, typing
+`hr@razorpay.com` with no proof at all was enough to unlock real
+candidates' resumes.
 """
 
 from typing import Annotated
@@ -15,12 +18,12 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import require_session
 from app.db.session import get_db
 from app.models.domain import CandidateUnlock, Company, Resume, User
 from app.schemas import (
     CandidateProfileRead,
     CandidateSearchResult,
-    RecruiterIdentifyRequest,
     RecruiterIdentifyResponse,
 )
 from app.services.company_verification import extract_domain
@@ -29,7 +32,7 @@ router = APIRouter(prefix="/recruiters", tags=["recruiters"])
 
 
 async def _verify_recruiter(db: AsyncSession, email: str) -> Company:
-    """Returns the Company this email is a verified recruiter for, or 403s."""
+    """Returns the Company this session-verified email belongs to, or 403s."""
     normalized = email.strip().lower()
     email_domain = extract_domain(normalized)
 
@@ -53,13 +56,13 @@ async def _verify_recruiter(db: AsyncSession, email: str) -> Company:
 @router.post(
     "/identify",
     response_model=RecruiterIdentifyResponse,
-    summary="Verify a recruiter's email against a registered company's domain",
+    summary="Verify the signed-in user's email against a registered company's domain",
 )
 async def identify(
-    payload: RecruiterIdentifyRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> RecruiterIdentifyResponse:
-    company = await _verify_recruiter(db, payload.email)
+    company = await _verify_recruiter(db, current_user.email)
     return RecruiterIdentifyResponse(company_id=company.id, company_name=company.name)
 
 
@@ -70,7 +73,7 @@ async def identify(
 )
 async def search_candidates(
     db: Annotated[AsyncSession, Depends(get_db)],
-    recruiter_email: str = Query(..., min_length=3, max_length=320),
+    current_user: Annotated[User, Depends(require_session)],
     role: str | None = Query(None, description="Matched against target roles and skills"),
     city: str | None = Query(None),
     work_mode: str | None = Query(None),
@@ -80,7 +83,7 @@ async def search_candidates(
     verified_only: bool = Query(False, description="Only candidates with at least one verified link"),
     limit: int = Query(30, ge=1, le=100),
 ) -> list[CandidateSearchResult]:
-    company = await _verify_recruiter(db, recruiter_email)
+    company = await _verify_recruiter(db, current_user.email)
 
     result = await db.execute(
         select(User).where(
@@ -159,10 +162,10 @@ async def search_candidates(
 )
 async def unlock_candidate(
     user_id: int,
-    payload: RecruiterIdentifyRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> CandidateProfileRead:
-    company = await _verify_recruiter(db, payload.email)
+    company = await _verify_recruiter(db, current_user.email)
 
     candidate = await db.get(User, user_id)
     if candidate is None or not candidate.profile_visible_to_recruiters:
@@ -170,7 +173,7 @@ async def unlock_candidate(
 
     stmt = (
         pg_insert(CandidateUnlock)
-        .values(company_id=company.id, user_id=user_id, unlocked_by_email=payload.email.strip().lower())
+        .values(company_id=company.id, user_id=user_id, unlocked_by_email=current_user.email)
         .on_conflict_do_nothing(index_elements=["company_id", "user_id"])
     )
     await db.execute(stmt)

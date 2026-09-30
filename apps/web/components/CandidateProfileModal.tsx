@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Github, Linkedin, Code2, Loader2, Mail, X, XCircle, Lightbulb } from "lucide-react";
 
-import { useRecruiterIdentityStore } from "@/lib/recruiterIdentityStore";
 import { unlockCandidate } from "@/lib/api";
 import { formatExperience, noticePeriodLabel } from "@/components/ProfileWorkspace";
 
@@ -44,11 +43,10 @@ function LinkRow({ icon: Icon, url, verified }: { icon: React.ElementType; url: 
 }
 
 export function CandidateProfileModal({ candidateId, onClose }: { candidateId: number; onClose: () => void }) {
-  const email = useRecruiterIdentityStore((s) => s.email);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: () => unlockCandidate({ candidateId, recruiterEmail: email as string }),
+    mutationFn: () => unlockCandidate({ candidateId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["candidateSearch"] }),
   });
   const { mutate } = mutation;

@@ -383,7 +383,7 @@ export function KanbanBoard() {
 
   const { data: cards, isLoading, isError } = useQuery({
     queryKey: ["applicationBoard", email],
-    queryFn: () => getApplicationBoard(email as string),
+    queryFn: () => getApplicationBoard(),
     enabled: !!email,
     refetchInterval: liveUpdatesEnabled ? 15_000 : false,
   });
@@ -429,7 +429,7 @@ export function KanbanBoard() {
     statusMutation.mutate({ applicationId, status: newStatus });
   };
 
-  if (!email) return <EmailGate title="See your applications" subtitle="Sign in with Google to load your tracker board" />;
+  if (!email) return <EmailGate title="See your applications" subtitle="Sign in to load your tracker board" />;
 
   if (isLoading) {
     return (

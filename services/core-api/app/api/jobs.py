@@ -206,6 +206,9 @@ class JobSeedRequest(BaseModel):
     apply_url: str | None = None
     source: str | None = "manual"
     source_url: str | None = None
+    # Left unset (NULL) means "unknown," not "0 years required" — most
+    # ingestion sources (Adzuna) don't provide this at all.
+    min_experience_years: int | None = None
 
 
 @router.post(
@@ -240,6 +243,8 @@ async def seed_job(
         job.apply_url = payload.apply_url or job.apply_url
         job.description = payload.description or job.description
         job.department = classify_department(payload.title)
+        if payload.min_experience_years is not None:
+            job.min_experience_years = payload.min_experience_years
     else:
         job = Job(
             company_id=payload.company_id,
@@ -253,6 +258,7 @@ async def seed_job(
             source_url=payload.source_url,
             fetched_at=datetime.now(timezone.utc),
             department=classify_department(payload.title),
+            min_experience_years=payload.min_experience_years,
         )
         db.add(job)
 
@@ -275,6 +281,7 @@ class JobRegisterRequest(BaseModel):
     salary_min: float | None = None
     salary_max: float | None = None
     apply_url: str | None = None
+    min_experience_years: int | None = None
 
 
 @router.post(
@@ -310,6 +317,7 @@ async def register_job(
         is_active=True,
         source="founder",
         department=classify_department(payload.title),
+        min_experience_years=payload.min_experience_years,
     )
     db.add(job)
     await db.commit()

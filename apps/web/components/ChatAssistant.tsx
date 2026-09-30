@@ -183,7 +183,7 @@ export function ChatAssistant({
 
   const { data: resumes } = useQuery({
     queryKey: ["resumes", email],
-    queryFn: () => listResumes(email as string),
+    queryFn: () => listResumes(),
     enabled: !!email,
   });
   const activeResume = resumes?.find((r) => r.id === activeResumeId) ?? null;
@@ -202,7 +202,7 @@ export function ChatAssistant({
     if (!email) return;
     let cancelled = false;
     setLoadingHistory(true);
-    getConversationMessages(conversationId, email)
+    getConversationMessages(conversationId)
       .then((messages) => {
         if (cancelled) return;
         setTurns(
@@ -281,7 +281,7 @@ export function ChatAssistant({
     setInput("");
 
     const history: ChatMessage[] = nextTurns.map((t) => ({ role: t.role, content: t.content }));
-    chatMutation.mutate({ messages: history, resumeId: activeResumeId, jobId, userEmail: email, conversationId });
+    chatMutation.mutate({ messages: history, resumeId: activeResumeId, jobId, conversationId });
   };
 
   const handleFile = async (file: File | undefined) => {
@@ -299,14 +299,13 @@ export function ChatAssistant({
     setTurns((prev) => [...prev, { role: "user", content: attachContent }]);
 
     try {
-      const resume = await uploadMutation.mutateAsync({ file, userEmail: email });
+      const resume = await uploadMutation.mutateAsync({ file });
       setActiveResumeId(resume.id);
       queryClient.invalidateQueries({ queryKey: ["resumes", email] });
 
       let convId = conversationId;
       const appended = await appendChatMessage({
         conversationId: convId,
-        userEmail: email,
         role: "user",
         content: attachContent,
       });
@@ -321,7 +320,6 @@ export function ChatAssistant({
       setTurns((prev) => [...prev, { role: "assistant", content: "Here's your ATS analysis:", resume: analyzed }]);
       await appendChatMessage({
         conversationId: convId,
-        userEmail: email,
         role: "assistant",
         content: "Here's your ATS analysis:",
         resumeId: analyzed.id,

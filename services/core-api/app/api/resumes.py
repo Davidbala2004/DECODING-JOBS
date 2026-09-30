@@ -4,13 +4,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.users import get_or_create_user
+from app.core.security import require_session
 from app.db.session import get_db
-from app.models.domain import Job, Resume
+from app.models.domain import Job, Resume, User
 from app.schemas import ResumeAnalyzeRequest, ResumeRead
 from app.services.resume_analyzer import analyze_resume
 from app.services.resume_parser import SUPPORTED_CONTENT_TYPES, UnsupportedResumeFormat, extract_text
@@ -30,8 +30,8 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 )
 async def upload_resume(
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
     file: Annotated[UploadFile, File()],
-    user_email: Annotated[str, Form()],
 ) -> Resume:
     if file.content_type not in SUPPORTED_CONTENT_TYPES:
         raise HTTPException(
@@ -54,10 +54,8 @@ async def upload_resume(
         logger.exception("Resume text extraction failed for %r", file.filename)
         extracted_text = None
 
-    user = await get_or_create_user(db, user_email)
-
     resume = Resume(
-        user_id=user.id,
+        user_id=current_user.id,
         filename=file.filename or "resume",
         content_type=file.content_type,
         file_bytes=file_bytes,
@@ -77,13 +75,10 @@ async def upload_resume(
 )
 async def list_resumes(
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[Resume]:
-    user = await get_or_create_user(db, email)
-    await db.commit()
-
     result = await db.execute(
-        select(Resume).where(Resume.user_id == user.id).order_by(Resume.uploaded_at.desc())
+        select(Resume).where(Resume.user_id == current_user.id).order_by(Resume.uploaded_at.desc())
     )
     return list(result.scalars().all())
 
@@ -97,10 +92,15 @@ async def analyze(
     resume_id: int,
     payload: ResumeAnalyzeRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Resume:
     resume = await db.get(Resume, resume_id)
     if resume is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Resume {resume_id} not found")
+    if resume.user_id != current_user.id:
+        # Previously this endpoint took no identity at all — anyone who
+        # guessed a resume_id could trigger (and read back) its analysis.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your resume.")
 
     if not resume.extracted_text:
         raise HTTPException(

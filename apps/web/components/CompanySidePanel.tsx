@@ -247,7 +247,7 @@ export function CompanySidePanel() {
 
   const resumesQuery = useQuery({
     queryKey: ["resumes", email],
-    queryFn: () => listResumes(email as string),
+    queryFn: () => listResumes(),
     enabled: !!email,
   });
   // Memoized so the auto-select effect below only re-runs when the actual
@@ -284,8 +284,7 @@ export function CompanySidePanel() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: (v: { jobId: number; resumeFilename: string }) =>
-      submitApplication({ ...v, userEmail: email }),
+    mutationFn: (v: { jobId: number; resumeFilename: string }) => submitApplication(v),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
   });
   // Destructured out so the reset effect below can depend on this specific
@@ -295,7 +294,7 @@ export function CompanySidePanel() {
 
   const [savedJobIds, setSavedJobIds] = useState<Set<number>>(new Set());
   const saveMutation = useMutation({
-    mutationFn: (jobId: number) => saveJob({ jobId, userEmail: email as string }),
+    mutationFn: (jobId: number) => saveJob({ jobId }),
     onSuccess: (_data, jobId) => {
       setSavedJobIds((prev) => new Set(prev).add(jobId));
       queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] });

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { useMutation } from "@tanstack/react-query";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2, Mail } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
 import { useIdentityStore } from "@/lib/identityStore";
-import { googleAuth } from "@/lib/api";
+import { googleAuth, requestMagicLink } from "@/lib/api";
 
 declare global {
   interface Window {
@@ -28,15 +29,14 @@ declare global {
 }
 
 /**
- * Sign in with Google — the whole identity model underneath is still "an
- * email is the whole account" (Application Tracker, AI Assistant, 1-Click
- * Apply all key off it unchanged); this just replaces *typing* an email
- * with a verified one from Google, so nobody can accidentally (or
- * deliberately) sign in as someone else's address.
+ * Real sign-in, two ways: Google (a verified ID token) or a magic link
+ * emailed to you (click it, land on /auth/verify, get a session). Both
+ * issue the same kind of bearer session token — this used to just trust
+ * whatever email a client claimed, with nothing proving they owned it.
  */
 export function EmailGate({
   title = "Sign in to continue",
-  subtitle = "We use your Google email as your account — no separate password to set up",
+  subtitle = "Sign in with Google, or we'll email you a one-time link — no password to set up",
 }: {
   title?: string;
   subtitle?: string;
@@ -46,16 +46,29 @@ export function EmailGate({
   const [gsiReady, setGsiReady] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const mutation = useMutation({
+  const [email, setEmail] = useState("");
+  const [linkSent, setLinkSent] = useState(false);
+  const [devLink, setDevLink] = useState<string | null>(null);
+
+  const googleMutation = useMutation({
     mutationFn: googleAuth,
-    onSuccess: (user) => setIdentity(user.email, user.id, user.forwarding_address),
+    onSuccess: (session) =>
+      setIdentity(session.user.email, session.user.id, session.session_token, session.user.forwarding_address),
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: () => requestMagicLink(email.trim()),
+    onSuccess: (result) => {
+      setLinkSent(true);
+      setDevLink(result.dev_magic_link);
+    },
   });
 
   useEffect(() => {
     if (!gsiReady || !clientId || !buttonRef.current || !window.google) return;
     window.google.accounts.id.initialize({
       client_id: clientId,
-      callback: (response) => mutation.mutate(response.credential),
+      callback: (response) => googleMutation.mutate(response.credential),
     });
     window.google.accounts.id.renderButton(buttonRef.current, {
       theme: "outline",
@@ -88,26 +101,71 @@ export function EmailGate({
       </div>
       <div className="text-center">
         <p className="text-sm font-semibold text-gray-900">{title}</p>
-        <p className="mt-1 text-xs text-gray-400">{subtitle}</p>
+        <p className="mt-1 max-w-xs text-xs text-gray-400">{subtitle}</p>
       </div>
 
-      {!clientId ? (
-        <div className="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-700">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          Google Sign-In isn&apos;t configured yet.
-        </div>
-      ) : (
+      {clientId && (
         <>
           <div ref={buttonRef} className="min-h-[44px]" />
-          {mutation.isPending && (
+          {googleMutation.isPending && (
             <div className="flex items-center gap-1.5 text-xs text-gray-400">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Signing in…
             </div>
           )}
-          {mutation.isError && (
-            <p className="max-w-xs text-center text-xs text-red-500">{(mutation.error as Error).message}</p>
+          {googleMutation.isError && (
+            <p className="max-w-xs text-center text-xs text-red-500">{(googleMutation.error as Error).message}</p>
           )}
+          <div className="flex w-full max-w-xs items-center gap-2 text-[11px] text-gray-300">
+            <div className="h-px flex-1 bg-gray-100" />
+            or
+            <div className="h-px flex-1 bg-gray-100" />
+          </div>
         </>
+      )}
+
+      {linkSent ? (
+        <div className="flex max-w-xs flex-col items-center gap-2 text-center">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-green-700">
+            <Mail className="h-4 w-4" /> Check your inbox
+          </div>
+          <p className="text-xs text-gray-400">
+            We sent a sign-in link to <span className="font-medium text-gray-600">{email}</span> — it expires in 15 minutes.
+          </p>
+          {devLink && (
+            <div className="mt-1 flex w-full flex-col gap-1.5 rounded-xl bg-amber-50 px-3.5 py-2.5 text-left text-[11px] text-amber-700">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Email isn&apos;t configured yet — dev link:
+              </div>
+              <a href={devLink} className="break-all font-medium underline">
+                {devLink}
+              </a>
+            </div>
+          )}
+        </div>
+      ) : (
+        <form
+          onSubmit={(e) => { e.preventDefault(); linkMutation.mutate(); }}
+          className="flex w-full max-w-xs flex-col gap-2"
+        >
+          <Input
+            type="email"
+            required
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={linkMutation.isPending || !email.trim()}
+            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 py-2.5 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 disabled:opacity-60"
+          >
+            {linkMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            Email me a sign-in link
+          </button>
+          {linkMutation.isError && (
+            <p className="text-center text-xs text-red-500">{(linkMutation.error as Error).message}</p>
+          )}
+        </form>
       )}
     </div>
   );

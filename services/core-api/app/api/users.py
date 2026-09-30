@@ -1,28 +1,33 @@
-"""User-related API routes: Phase 1's password-less, email-only identity,
-plus Google Sign-In (which just supplies that same email more reliably —
-every other feature keyed on email/user_id is unaffected) and job-seeker
-preferences.
+"""User-related API routes: Google Sign-In and job-seeker preferences.
+
+Real identity is a session (see app/services/auth.py / app/core/security.py
+`require_session`), established via Google Sign-In here or the magic-link
+flow in app/api/auth.py — both call create_session() so either path yields
+the same kind of bearer token. The old /identify endpoint (get-or-create a
+User by a bare, unverified email string with no session issued) has been
+removed — it granted no session and was superseded entirely by magic links.
 """
 
 import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.security import require_session
 from app.db.session import get_db
 from app.models.domain import SavedSearch, User
 from app.schemas import (
     GoogleAuthRequest,
     SavedSearchCreate,
     SavedSearchRead,
-    UserIdentifyRequest,
+    SessionResponse,
     UserPreferencesRead,
     UserPreferencesUpdate,
-    UserRead,
 )
+from app.services.auth import create_session
 from app.services.link_verifier import verify_links
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -51,41 +56,18 @@ async def get_or_create_user(db: AsyncSession, email: str) -> User:
 
 
 @router.post(
-    "/identify",
-    response_model=UserRead,
-    summary="Get-or-create a User by email (no password) — Phase 1 sign-in",
-)
-async def identify(
-    payload: UserIdentifyRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
-    user = await get_or_create_user(db, payload.email)
-    await db.commit()
-    await db.refresh(user)
-
-    settings = get_settings()
-    user._forwarding_address = (
-        f"u-{user.forwarding_token}@{settings.INBOUND_EMAIL_DOMAIN}"
-        if settings.INBOUND_EMAIL_DOMAIN and user.forwarding_token
-        else None
-    )
-    return user
-
-
-@router.post(
     "/google-auth",
-    response_model=UserRead,
-    summary="Sign in with Google — verifies the ID token, then get-or-creates the same User row /identify would",
+    response_model=SessionResponse,
+    summary="Sign in with Google — verifies the ID token, then issues a real session",
 )
 async def google_auth(
     payload: GoogleAuthRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
-    """Google Sign-In replaces *typing* an email, not the identity model
-    itself — verifying the ID token just gives us a trustworthy email to
-    hand to the exact same get_or_create_user every other flow already uses,
-    so the tracker/chat/resumes of someone who previously typed their email
-    keep working unchanged once they sign in with Google instead."""
+) -> SessionResponse:
+    """Verifies the Google ID token server-side, then issues a session the
+    same way the magic-link flow does (app/api/auth.py) — one session
+    concept shared by both sign-in paths, so every other endpoint only ever
+    has to check `require_session`, never re-implement identity."""
     settings = get_settings()
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(
@@ -127,37 +109,33 @@ async def google_auth(
         if settings.INBOUND_EMAIL_DOMAIN and user.forwarding_token
         else None
     )
-    return user
+
+    session_token = await create_session(db, user)
+    return SessionResponse(session_token=session_token, user=user)
 
 
 @router.get(
     "/preferences",
     response_model=UserPreferencesRead,
-    summary="Get a user's job-search preferences",
+    summary="Get the signed-in user's job-search preferences",
 )
 async def get_preferences(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3, max_length=320),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> User:
-    normalized = email.strip().lower()
-    result = await db.execute(select(User).where(User.email == normalized))
-    user = result.scalar_one_or_none()
-    if user is None:
-        # No account yet means no preferences yet — an empty set, not an error.
-        return UserPreferencesRead()
-    return user
+    return current_user
 
 
 @router.put(
     "/preferences",
     response_model=UserPreferencesRead,
-    summary="Update a user's job-search preferences (personalizes search/chat)",
+    summary="Update the signed-in user's job-search preferences (personalizes search/chat)",
 )
 async def update_preferences(
     payload: UserPreferencesUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> User:
-    user = await get_or_create_user(db, payload.email)
+    user = current_user
     if payload.target_roles is not None:
         user.target_roles = payload.target_roles
     if payload.preferred_cities is not None:
@@ -206,10 +184,10 @@ async def update_preferences(
 async def create_saved_search(
     payload: SavedSearchCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> SavedSearch:
-    user = await get_or_create_user(db, payload.email)
     saved_search = SavedSearch(
-        user_id=user.id,
+        user_id=current_user.id,
         label=payload.label,
         filters=payload.filters,
         email_alerts_enabled=payload.email_alerts_enabled,
@@ -227,16 +205,11 @@ async def create_saved_search(
 )
 async def list_saved_searches(
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3, max_length=320),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[SavedSearch]:
-    normalized = email.strip().lower()
-    result = await db.execute(select(User).where(User.email == normalized))
-    user = result.scalar_one_or_none()
-    if user is None:
-        return []
     result = await db.execute(
         select(SavedSearch)
-        .where(SavedSearch.user_id == user.id)
+        .where(SavedSearch.user_id == current_user.id)
         .order_by(SavedSearch.created_at.desc())
     )
     return list(result.scalars().all())
@@ -250,15 +223,10 @@ async def list_saved_searches(
 async def delete_saved_search(
     saved_search_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3, max_length=320),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> None:
-    normalized = email.strip().lower()
-    result = await db.execute(select(User).where(User.email == normalized))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found.")
     result = await db.execute(
-        select(SavedSearch).where(SavedSearch.id == saved_search_id, SavedSearch.user_id == user.id)
+        select(SavedSearch).where(SavedSearch.id == saved_search_id, SavedSearch.user_id == current_user.id)
     )
     saved_search = result.scalar_one_or_none()
     if saved_search is None:

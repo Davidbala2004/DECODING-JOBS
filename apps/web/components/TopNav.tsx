@@ -124,7 +124,7 @@ export function TopNav() {
 
   const { data: board } = useQuery({
     queryKey: ["applicationBoard", email],
-    queryFn: () => getApplicationBoard(email as string),
+    queryFn: () => getApplicationBoard(),
     enabled: !!email,
     refetchInterval: liveUpdatesEnabled ? LIVE_POLL_INTERVAL_MS : false,
   });

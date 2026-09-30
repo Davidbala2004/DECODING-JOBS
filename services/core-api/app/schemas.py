@@ -92,7 +92,7 @@ class JobRead(BaseModel):
     title: str
     description: str
     employment_type: EmploymentType
-    min_experience_years: int
+    min_experience_years: int | None
     salary_min: Decimal | None = None
     salary_max: Decimal | None = None
     work_mode: WorkMode | None = None
@@ -119,7 +119,6 @@ class ApplicationSubmitRequest(BaseModel):
 
     job_id: int
     resume_filename: str = Field(..., min_length=1, max_length=255)
-    user_email: str | None = Field(None, description="Ties the application to a tracker board")
 
 
 class ApplicationSaveRequest(BaseModel):
@@ -128,7 +127,6 @@ class ApplicationSaveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     job_id: int
-    user_email: str = Field(..., min_length=3, max_length=320)
 
 
 class ApplicationStatusUpdate(BaseModel):
@@ -208,6 +206,27 @@ class UserRead(BaseModel):
         return data
 
 
+class MagicLinkRequest(BaseModel):
+    """Body for POST /auth/request-link."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(..., min_length=3, max_length=320)
+
+
+class MagicLinkResponse(BaseModel):
+    sent: bool
+    # Only present when SENDGRID_API_KEY is unset — a local-dev convenience so
+    # sign-in is testable without real email delivery. Never populated once a
+    # real send key is configured; see app/api/auth.py.
+    dev_magic_link: str | None = None
+
+
+class SessionResponse(BaseModel):
+    session_token: str
+    user: UserRead
+
+
 class GoogleAuthRequest(BaseModel):
     """Body for POST /users/google-auth — the ID token from Google's Sign In
     button/One Tap flow, verified server-side before trusting anything in it."""
@@ -252,7 +271,6 @@ class UserPreferencesRead(BaseModel):
 class UserPreferencesUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(..., min_length=3, max_length=320)
     target_roles: list[str] | None = None
     preferred_cities: list[str] | None = None
     preferred_work_mode: str | None = None
@@ -264,12 +282,6 @@ class UserPreferencesUpdate(BaseModel):
     linkedin_url: str | None = None
     leetcode_url: str | None = None
     profile_visible_to_recruiters: bool | None = None
-
-
-class RecruiterIdentifyRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    email: str = Field(..., min_length=3, max_length=320)
 
 
 class RecruiterIdentifyResponse(BaseModel):
@@ -325,7 +337,6 @@ class CandidateProfileRead(BaseModel):
 class SavedSearchCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(..., min_length=3, max_length=320)
     label: str = Field(..., min_length=1, max_length=120)
     filters: dict = Field(default_factory=dict)
     email_alerts_enabled: bool = False
@@ -405,7 +416,6 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(..., min_length=1, max_length=50)
     resume_id: int | None = None
     job_id: int | None = None
-    user_email: str | None = None
     conversation_id: int | None = None
 
 
@@ -482,7 +492,6 @@ class ChatMessageAppendRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     conversation_id: int | None = None
-    user_email: str = Field(..., min_length=3, max_length=320)
     role: str = Field(..., pattern="^(user|assistant)$")
     content: str = Field(..., min_length=1, max_length=4000)
     resume_id: int | None = None

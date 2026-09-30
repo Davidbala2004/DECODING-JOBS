@@ -38,12 +38,12 @@ export function ChatHistorySidebar({
 
   const { data: conversations } = useQuery({
     queryKey: ["chatConversations", email],
-    queryFn: () => listChatConversations(email as string),
+    queryFn: () => listChatConversations(),
     enabled: !!email,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteChatConversation(id, email as string),
+    mutationFn: (id: number) => deleteChatConversation(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ["chatConversations", email] });
       if (id === selectedId) onNew();

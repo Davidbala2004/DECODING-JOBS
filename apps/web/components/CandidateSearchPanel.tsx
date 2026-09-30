@@ -6,6 +6,7 @@ import { Github, Linkedin, Code2, Loader2, Search, ShieldCheck, Users2, LogOut, 
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useIdentityStore } from "@/lib/identityStore";
 import { useRecruiterIdentityStore } from "@/lib/recruiterIdentityStore";
 import { searchCandidates, type CandidateSearchResult } from "@/lib/api";
 import { CandidateProfileModal } from "@/components/CandidateProfileModal";
@@ -114,7 +115,8 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
 }
 
 export function CandidateSearchPanel() {
-  const { email, companyName, clearRecruiterIdentity } = useRecruiterIdentityStore();
+  const email = useIdentityStore((s) => s.email);
+  const { companyName, clearRecruiterCompany } = useRecruiterIdentityStore();
   const [role, setRole] = useState("");
   const [city, setCity] = useState("");
   const [workMode, setWorkMode] = useState("");
@@ -127,7 +129,6 @@ export function CandidateSearchPanel() {
     queryKey: ["candidateSearch", email, role, city, workMode, experienceMin, noticePeriod, verifiedOnly],
     queryFn: () =>
       searchCandidates({
-        recruiterEmail: email as string,
         role: role || undefined,
         city: city || undefined,
         workMode: workMode || undefined,
@@ -151,7 +152,7 @@ export function CandidateSearchPanel() {
           </div>
           <button
             type="button"
-            onClick={clearRecruiterIdentity}
+            onClick={clearRecruiterCompany}
             className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold text-gray-400 hover:bg-gray-50 hover:text-gray-600"
           >
             <LogOut className="h-3.5 w-3.5" /> Switch company

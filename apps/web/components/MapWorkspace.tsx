@@ -174,8 +174,12 @@ const CompanyPin = React.memo(function CompanyPin({
   const PIN_SIZE = useMemo(() => {
     const zoomScale = Math.min(Math.max((zoom - 10) / 4, 0), 1);
     const baseSize = 32 + zoomScale * 20;
-    return isSelected ? baseSize + 16 : isHovered ? baseSize + 8 : baseSize;
-  }, [zoom, isSelected, isHovered]);
+    const base = isSelected ? baseSize + 16 : isHovered ? baseSize + 8 : baseSize;
+    // A company with zero active jobs renders smaller — "worth a click?" is
+    // visible before the click, not just after, instead of every pin on the
+    // map looking equally promising regardless of whether it's hiring.
+    return isHiring || isSelected || isHovered ? base : base * 0.8;
+  }, [zoom, isSelected, isHovered, isHiring]);
 
   return (
     <div
@@ -183,9 +187,11 @@ const CompanyPin = React.memo(function CompanyPin({
       style={{
         zIndex: isSelected ? 200 : isHovered ? 100 : 10,
         cursor: "pointer",
+        opacity: isHiring || isSelected || isHovered ? 1 : 0.55,
         filter: isSelected
           ? "drop-shadow(0 4px 12px rgba(0,0,0,0.25))"
           : "drop-shadow(0 2px 6px rgba(0,0,0,0.15))",
+        transition: "opacity 0.2s ease",
       }}
       onClick={onClick}
       onMouseEnter={onHover}
@@ -710,7 +716,7 @@ export function MapWorkspace() {
   const identityEmail = useIdentityStore((s) => s.email);
   const { data: preferences } = useQuery({
     queryKey: ["preferences", identityEmail],
-    queryFn: () => getPreferences(identityEmail as string),
+    queryFn: () => getPreferences(),
     enabled: !!identityEmail,
   });
 

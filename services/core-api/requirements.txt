@@ -14,3 +14,5 @@ google-auth==2.37.0
 # google.auth.transport.requests needs this directly — google-auth doesn't
 # pull it in on its own unless installed via the `google-auth[requests]` extra.
 requests==2.32.3
+pytest==8.3.4
+pytest-asyncio==0.25.2

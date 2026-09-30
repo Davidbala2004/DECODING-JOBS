@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # raw comma-separated string reaches the validator below intact.
     CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
+    # Where the frontend actually runs — used to build the magic-link verify
+    # URL emailed to a user (e.g. {FRONTEND_URL}/auth/verify?token=...).
+    FRONTEND_URL: str = "http://localhost:3333"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def split_cors_origins(cls, value: str | list[str]) -> list[str]:

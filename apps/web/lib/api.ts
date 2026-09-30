@@ -42,7 +42,7 @@ export interface Job {
   title: string;
   description: string;
   employment_type: EmploymentType;
-  min_experience_years: number;
+  min_experience_years: number | null;
   salary_min: string | null;
   salary_max: string | null;
   work_mode: WorkMode | null;
@@ -82,12 +82,32 @@ export interface BoundingBox {
   maxLng: number;
 }
 
+import { useIdentityStore } from "./identityStore";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+/** Bearer token for the signed-in session, if any — attach to every
+ * authenticated request. Read fresh each call (not cached) since it can
+ * change between calls (sign-in, sign-out, expiry). */
+function authHeader(): Record<string, string> {
+  const token = useIdentityStore.getState().sessionToken;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** A 401 means the session is gone (expired, revoked, or never existed) —
+ * clear it so the UI falls back to the sign-in gate instead of silently
+ * failing every subsequent call with a stale token. */
+function handleUnauthorized(status: number): void {
+  if (status === 401) {
+    useIdentityStore.getState().clearIdentity();
+  }
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers: authHeader() });
 
   if (!response.ok) {
+    handleUnauthorized(response.status);
     throw new Error(`Request to ${path} failed (${response.status})`);
   }
 
@@ -97,11 +117,12 @@ async function fetchJson<T>(path: string): Promise<T> {
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
+    handleUnauthorized(response.status);
     throw new Error(`Request to ${path} failed (${response.status})`);
   }
 
@@ -111,11 +132,12 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 async function patchJson<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
+    handleUnauthorized(response.status);
     throw new Error(`Request to ${path} failed (${response.status})`);
   }
 
@@ -239,20 +261,20 @@ export async function getJobSuggestions(
   return fetchJson<{ title: string }[]>(`/api/v1/jobs/suggestions?${params.toString()}`);
 }
 
-/** Matches POST /api/v1/applications/submit on services/core-api. */
+/** Matches POST /api/v1/applications/submit on services/core-api. Identity
+ * comes from the session automatically (via authHeader()); this still works
+ * with no session at all for a true zero-friction anonymous 1-click apply. */
 export async function submitApplication(params: {
   jobId: number;
   resumeFilename: string;
-  userEmail?: string | null;
 }): Promise<Application> {
   return postJson<Application>("/api/v1/applications/submit", {
     job_id: params.jobId,
     resume_filename: params.resumeFilename,
-    user_email: params.userEmail || undefined,
   });
 }
 
-export interface IdentifyResult {
+export interface SessionUser {
   id: number;
   email: string;
   full_name: string | null;
@@ -261,14 +283,32 @@ export interface IdentifyResult {
   forwarding_address: string | null;
 }
 
-/** Matches POST /api/v1/users/identify on services/core-api — Phase 1's password-less sign-in. */
-export async function identify(email: string): Promise<IdentifyResult> {
-  return postJson<IdentifyResult>("/api/v1/users/identify", { email });
+export interface SessionResult {
+  session_token: string;
+  user: SessionUser;
+}
+
+/** Matches POST /api/v1/auth/request-link — emails a one-time sign-in link.
+ * `dev_magic_link` is only present when SENDGRID_API_KEY isn't configured
+ * server-side, as a local-dev convenience. */
+export async function requestMagicLink(email: string): Promise<{ sent: boolean; dev_magic_link: string | null }> {
+  return postJson("/api/v1/auth/request-link", { email });
+}
+
+/** Matches GET /api/v1/auth/verify?token=... — exchanges a magic-link token
+ * for a real session. */
+export async function verifyMagicLink(token: string): Promise<SessionResult> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify?${new URLSearchParams({ token })}`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail || `Sign-in link is invalid or expired (${response.status})`);
+  }
+  return response.json() as Promise<SessionResult>;
 }
 
 /** Matches POST /api/v1/users/google-auth — verifies the Google ID token
- * server-side, then get-or-creates the same User row /identify would. */
-export async function googleAuth(credential: string): Promise<IdentifyResult> {
+ * server-side, then issues the same kind of session a magic link would. */
+export async function googleAuth(credential: string): Promise<SessionResult> {
   const response = await fetch(`${API_BASE_URL}/api/v1/users/google-auth`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -278,7 +318,7 @@ export async function googleAuth(credential: string): Promise<IdentifyResult> {
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail || `Google sign-in failed (${response.status})`);
   }
-  return response.json() as Promise<IdentifyResult>;
+  return response.json() as Promise<SessionResult>;
 }
 
 export interface UserPreferences {
@@ -299,14 +339,12 @@ export interface UserPreferences {
 }
 
 /** Matches GET /api/v1/users/preferences on services/core-api. */
-export async function getPreferences(email: string): Promise<UserPreferences> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<UserPreferences>(`/api/v1/users/preferences?${params.toString()}`);
+export async function getPreferences(): Promise<UserPreferences> {
+  return fetchJson<UserPreferences>(`/api/v1/users/preferences`);
 }
 
 /** Matches PUT /api/v1/users/preferences on services/core-api. */
 export async function updatePreferences(params: {
-  email: string;
   targetRoles?: string[];
   preferredCities?: string[];
   preferredWorkMode?: string | null;
@@ -321,9 +359,8 @@ export async function updatePreferences(params: {
 }): Promise<UserPreferences> {
   const response = await fetch(`${API_BASE_URL}/api/v1/users/preferences`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify({
-      email: params.email,
       target_roles: params.targetRoles,
       preferred_cities: params.preferredCities,
       preferred_work_mode: params.preferredWorkMode,
@@ -338,6 +375,7 @@ export async function updatePreferences(params: {
     }),
   });
   if (!response.ok) {
+    handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail || `Saving preferences failed (${response.status})`);
   }
@@ -366,13 +404,11 @@ export interface SavedSearch {
 
 /** Matches POST /api/v1/users/saved-searches — save the current map filters as a shortcut. */
 export async function createSavedSearch(params: {
-  email: string;
   label: string;
   filters: SavedSearchFilters;
   emailAlertsEnabled?: boolean;
 }): Promise<SavedSearch> {
   return postJson<SavedSearch>("/api/v1/users/saved-searches", {
-    email: params.email,
     label: params.label,
     filters: params.filters,
     email_alerts_enabled: params.emailAlertsEnabled ?? false,
@@ -380,33 +416,31 @@ export async function createSavedSearch(params: {
 }
 
 /** Matches GET /api/v1/users/saved-searches on services/core-api. */
-export async function listSavedSearches(email: string): Promise<SavedSearch[]> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<SavedSearch[]>(`/api/v1/users/saved-searches?${params.toString()}`);
+export async function listSavedSearches(): Promise<SavedSearch[]> {
+  return fetchJson<SavedSearch[]>(`/api/v1/users/saved-searches`);
 }
 
 /** Matches DELETE /api/v1/users/saved-searches/{id} on services/core-api. */
-export async function deleteSavedSearch(params: { id: number; email: string }): Promise<void> {
-  const query = new URLSearchParams({ email: params.email });
-  const response = await fetch(`${API_BASE_URL}/api/v1/users/saved-searches/${params.id}?${query.toString()}`, {
+export async function deleteSavedSearch(params: { id: number }): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/saved-searches/${params.id}`, {
     method: "DELETE",
+    headers: authHeader(),
   });
   if (!response.ok && response.status !== 204) {
+    handleUnauthorized(response.status);
     throw new Error(`Deleting saved search failed (${response.status})`);
   }
 }
 
 /** Matches GET /api/v1/applications/board on services/core-api — the Kanban tracker's cards. */
-export async function getApplicationBoard(email: string): Promise<ApplicationBoardCard[]> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<ApplicationBoardCard[]>(`/api/v1/applications/board?${params.toString()}`);
+export async function getApplicationBoard(): Promise<ApplicationBoardCard[]> {
+  return fetchJson<ApplicationBoardCard[]>(`/api/v1/applications/board`);
 }
 
 /** Matches POST /api/v1/applications/save on services/core-api — bookmark a job pre-application. */
-export async function saveJob(params: { jobId: number; userEmail: string }): Promise<ApplicationBoardCard> {
+export async function saveJob(params: { jobId: number }): Promise<ApplicationBoardCard> {
   return postJson<ApplicationBoardCard>("/api/v1/applications/save", {
     job_id: params.jobId,
-    user_email: params.userEmail,
   });
 }
 
@@ -452,16 +486,17 @@ export interface Resume {
 }
 
 /** Matches POST /api/v1/resumes/upload on services/core-api. */
-export async function uploadResume(params: { file: File; userEmail: string }): Promise<Resume> {
+export async function uploadResume(params: { file: File }): Promise<Resume> {
   const form = new FormData();
   form.append("file", params.file);
-  form.append("user_email", params.userEmail);
 
   const response = await fetch(`${API_BASE_URL}/api/v1/resumes/upload`, {
     method: "POST",
+    headers: authHeader(),
     body: form,
   });
   if (!response.ok) {
+    handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail || `Resume upload failed (${response.status})`);
   }
@@ -476,9 +511,8 @@ export async function analyzeResume(params: { resumeId: number; jobId?: number }
 }
 
 /** Matches GET /api/v1/resumes on services/core-api. */
-export async function listResumes(email: string): Promise<Resume[]> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<Resume[]>(`/api/v1/resumes?${params.toString()}`);
+export async function listResumes(): Promise<Resume[]> {
+  return fetchJson<Resume[]>(`/api/v1/resumes`);
 }
 
 export interface ChatMessage {
@@ -520,14 +554,12 @@ export async function sendChatMessage(params: {
   messages: ChatMessage[];
   resumeId?: number | null;
   jobId?: number | null;
-  userEmail?: string | null;
   conversationId?: number | null;
 }): Promise<ChatResponse> {
   return postJson<ChatResponse>("/api/v1/chat", {
     messages: params.messages,
     resume_id: params.resumeId ?? null,
     job_id: params.jobId ?? null,
-    user_email: params.userEmail ?? null,
     conversation_id: params.conversationId ?? null,
   });
 }
@@ -549,30 +581,23 @@ export interface ChatConversationMessage {
 }
 
 /** Matches GET /api/v1/chat/conversations on services/core-api. */
-export async function listChatConversations(email: string): Promise<ChatConversationSummary[]> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<ChatConversationSummary[]>(`/api/v1/chat/conversations?${params.toString()}`);
+export async function listChatConversations(): Promise<ChatConversationSummary[]> {
+  return fetchJson<ChatConversationSummary[]>(`/api/v1/chat/conversations`);
 }
 
 /** Matches GET /api/v1/chat/conversations/{id}/messages on services/core-api. */
-export async function getConversationMessages(
-  conversationId: number,
-  email: string
-): Promise<ChatConversationMessage[]> {
-  const params = new URLSearchParams({ email });
-  return fetchJson<ChatConversationMessage[]>(
-    `/api/v1/chat/conversations/${conversationId}/messages?${params.toString()}`
-  );
+export async function getConversationMessages(conversationId: number): Promise<ChatConversationMessage[]> {
+  return fetchJson<ChatConversationMessage[]>(`/api/v1/chat/conversations/${conversationId}/messages`);
 }
 
 /** Matches DELETE /api/v1/chat/conversations/{id} on services/core-api. */
-export async function deleteChatConversation(conversationId: number, email: string): Promise<void> {
-  const params = new URLSearchParams({ email });
-  const response = await fetch(
-    `${API_BASE_URL}/api/v1/chat/conversations/${conversationId}?${params.toString()}`,
-    { method: "DELETE" }
-  );
+export async function deleteChatConversation(conversationId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/chat/conversations/${conversationId}`, {
+    method: "DELETE",
+    headers: authHeader(),
+  });
   if (!response.ok) {
+    handleUnauthorized(response.status);
     throw new Error(`Failed to delete conversation (${response.status})`);
   }
 }
@@ -580,14 +605,12 @@ export async function deleteChatConversation(conversationId: number, email: stri
 /** Matches POST /api/v1/chat/conversations/messages on services/core-api. */
 export async function appendChatMessage(params: {
   conversationId?: number | null;
-  userEmail: string;
   role: "user" | "assistant";
   content: string;
   resumeId?: number | null;
 }): Promise<{ conversation_id: number; message_id: number }> {
   return postJson<{ conversation_id: number; message_id: number }>("/api/v1/chat/conversations/messages", {
     conversation_id: params.conversationId ?? null,
-    user_email: params.userEmail,
     role: params.role,
     content: params.content,
     resume_id: params.resumeId ?? null,
@@ -683,14 +706,16 @@ export interface RecruiterIdentity {
   company_name: string;
 }
 
-/** Matches POST /api/v1/recruiters/identify on services/core-api. */
-export async function recruiterIdentify(email: string): Promise<RecruiterIdentity> {
+/** Matches POST /api/v1/recruiters/identify — the caller's identity comes
+ * from their session (same sign-in as a job seeker's); this just resolves
+ * which registered company that session's email domain-matches. */
+export async function recruiterIdentify(): Promise<RecruiterIdentity> {
   const response = await fetch(`${API_BASE_URL}/api/v1/recruiters/identify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    headers: { "Content-Type": "application/json", ...authHeader() },
   });
   if (!response.ok) {
+    handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail || `Verification failed (${response.status})`);
   }
@@ -736,7 +761,6 @@ export interface CandidateProfile {
 
 /** Matches GET /api/v1/recruiters/candidates on services/core-api. */
 export async function searchCandidates(params: {
-  recruiterEmail: string;
   role?: string;
   city?: string;
   workMode?: string;
@@ -745,7 +769,7 @@ export async function searchCandidates(params: {
   noticePeriod?: string;
   verifiedOnly?: boolean;
 }): Promise<CandidateSearchResult[]> {
-  const query = new URLSearchParams({ recruiter_email: params.recruiterEmail });
+  const query = new URLSearchParams();
   if (params.role) query.set("role", params.role);
   if (params.city) query.set("city", params.city);
   if (params.workMode) query.set("work_mode", params.workMode);
@@ -757,13 +781,13 @@ export async function searchCandidates(params: {
 }
 
 /** Matches POST /api/v1/recruiters/candidates/{id}/unlock on services/core-api. */
-export async function unlockCandidate(params: { candidateId: number; recruiterEmail: string }): Promise<CandidateProfile> {
+export async function unlockCandidate(params: { candidateId: number }): Promise<CandidateProfile> {
   const response = await fetch(`${API_BASE_URL}/api/v1/recruiters/candidates/${params.candidateId}/unlock`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: params.recruiterEmail }),
+    headers: { "Content-Type": "application/json", ...authHeader() },
   });
   if (!response.ok) {
+    handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
     throw new Error(body?.detail || `Unlock failed (${response.status})`);
   }
