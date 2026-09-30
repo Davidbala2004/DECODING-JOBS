@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bookmark, BookmarkCheck, Bell, BellOff, Loader2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -45,14 +46,17 @@ export function SavedSearchesButton({
       createSavedSearch({ label: label.trim(), filters, emailAlertsEnabled: alertsEnabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedSearches", email] });
+      toast.success("Search saved");
       setLabel("");
       setAlertsEnabled(false);
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteSavedSearch({ id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["savedSearches", email] }),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   useEffect(() => {

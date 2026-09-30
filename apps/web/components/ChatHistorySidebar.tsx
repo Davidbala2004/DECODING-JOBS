@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function ChatHistorySidebar({
       queryClient.invalidateQueries({ queryKey: ["chatConversations", email] });
       if (id === selectedId) onNew();
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   return (

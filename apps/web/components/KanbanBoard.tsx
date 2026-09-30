@@ -13,6 +13,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X, FileText, HelpCircle, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -83,8 +84,9 @@ function RoundStepper({ applicationId, round }: { applicationId: number; round: 
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err: Error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["applicationBoard", email], context.previous);
+      toast.error(err.message || "Couldn't update interview round");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
   });
@@ -148,8 +150,9 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err: Error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["applicationBoard", email], context.previous);
+      toast.error(err.message || "Couldn't mark as applied");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
   });
@@ -399,8 +402,9 @@ export function KanbanBoard() {
       );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err: Error, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["applicationBoard", email], context.previous);
+      toast.error(err.message || "Couldn't move the card — try again");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
   });

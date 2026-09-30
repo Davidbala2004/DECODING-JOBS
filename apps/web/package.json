@@ -25,6 +25,7 @@
     "react-map-gl": "8.1.2",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.8",
     "supercluster": "^9.0.0",
     "tailwind-merge": "2.6.0",
     "zustand": "5.0.14"

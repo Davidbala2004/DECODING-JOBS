@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Github, Linkedin, Code2, Loader2, Sparkles, User } from "lucide-react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -142,6 +143,7 @@ function ProfileForm({ email }: { email: string }) {
         leetcodeUrl,
       }),
     onSuccess: (updated) => queryClient.setQueryData(["preferences", email], updated),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const toggleCity = (city: string) => {

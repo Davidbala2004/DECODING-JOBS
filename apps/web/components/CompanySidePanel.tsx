@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   CheckCircle2,
   XCircle,
@@ -285,7 +286,11 @@ export function CompanySidePanel() {
 
   const applyMutation = useMutation({
     mutationFn: (v: { jobId: number; resumeFilename: string }) => submitApplication(v),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] });
+      toast.success("Application tracked");
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
   // Destructured out so the reset effect below can depend on this specific
   // (stable) function instead of the whole mutation object, which is a new
@@ -299,6 +304,7 @@ export function CompanySidePanel() {
       setSavedJobIds((prev) => new Set(prev).add(jobId));
       queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] });
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   // Which open role "Apply" targets — was silently hardcoded to jobs[0]

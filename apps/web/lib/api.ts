@@ -103,12 +103,32 @@ function handleUnauthorized(status: number): void {
   }
 }
 
+/** FastAPI's error body is either `{detail: string}` (a raised HTTPException)
+ * or `{detail: [{loc, msg, type}, ...]}` (a 422 Pydantic validation failure).
+ * Rendering the latter directly (`String(detail)`) prints "[object Object]"
+ * to the user, so turn it into one readable sentence naming the field. */
+function apiErrorMessage(body: unknown, fallback: string): string {
+  const detail = (body as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string" && detail.length > 0) return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((issue: { loc?: unknown[]; msg?: string }) => {
+        const field = Array.isArray(issue.loc) ? issue.loc.at(-1) : undefined;
+        return field && typeof field === "string" ? `${field}: ${issue.msg}` : issue.msg;
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return fallback;
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, { headers: authHeader() });
 
   if (!response.ok) {
     handleUnauthorized(response.status);
-    throw new Error(`Request to ${path} failed (${response.status})`);
+    const body = await response.json().catch(() => null);
+    throw new Error(apiErrorMessage(body, `Request to ${path} failed (${response.status})`));
   }
 
   return response.json() as Promise<T>;
@@ -123,7 +143,8 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     handleUnauthorized(response.status);
-    throw new Error(`Request to ${path} failed (${response.status})`);
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(apiErrorMessage(errorBody, `Request to ${path} failed (${response.status})`));
   }
 
   return response.json() as Promise<T>;
@@ -138,7 +159,8 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     handleUnauthorized(response.status);
-    throw new Error(`Request to ${path} failed (${response.status})`);
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(apiErrorMessage(errorBody, `Request to ${path} failed (${response.status})`));
   }
 
   return response.json() as Promise<T>;
@@ -301,7 +323,7 @@ export async function verifyMagicLink(token: string): Promise<SessionResult> {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/verify?${new URLSearchParams({ token })}`);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Sign-in link is invalid or expired (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Sign-in link is invalid or expired (${response.status})`));
   }
   return response.json() as Promise<SessionResult>;
 }
@@ -316,7 +338,7 @@ export async function googleAuth(credential: string): Promise<SessionResult> {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Google sign-in failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Google sign-in failed (${response.status})`));
   }
   return response.json() as Promise<SessionResult>;
 }
@@ -377,7 +399,7 @@ export async function updatePreferences(params: {
   if (!response.ok) {
     handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Saving preferences failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Saving preferences failed (${response.status})`));
   }
   return response.json() as Promise<UserPreferences>;
 }
@@ -498,7 +520,7 @@ export async function uploadResume(params: { file: File }): Promise<Resume> {
   if (!response.ok) {
     handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Resume upload failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Resume upload failed (${response.status})`));
   }
   return response.json() as Promise<Resume>;
 }
@@ -658,7 +680,7 @@ export async function registerCompany(params: CompanyRegisterParams): Promise<Co
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Company registration failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Company registration failed (${response.status})`));
   }
   return response.json() as Promise<Company>;
 }
@@ -694,7 +716,7 @@ export async function registerJob(params: JobRegisterParams): Promise<Job> {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Job posting failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Job posting failed (${response.status})`));
   }
   return response.json() as Promise<Job>;
 }
@@ -717,7 +739,7 @@ export async function recruiterIdentify(): Promise<RecruiterIdentity> {
   if (!response.ok) {
     handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Verification failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Verification failed (${response.status})`));
   }
   return response.json() as Promise<RecruiterIdentity>;
 }
@@ -789,7 +811,7 @@ export async function unlockCandidate(params: { candidateId: number }): Promise<
   if (!response.ok) {
     handleUnauthorized(response.status);
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail || `Unlock failed (${response.status})`);
+    throw new Error(apiErrorMessage(body, `Unlock failed (${response.status})`));
   }
   return response.json() as Promise<CandidateProfile>;
 }
