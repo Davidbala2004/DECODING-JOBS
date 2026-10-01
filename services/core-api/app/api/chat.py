@@ -16,6 +16,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.ratelimit import RateLimit
 from app.core.security import optional_session, require_session
 from app.db.session import get_db
 from app.models.domain import ChatConversation, ChatMessageRecord, Company, Job, Resume, User
@@ -208,13 +209,19 @@ async def _tool_list_companies(
     result = await db.execute(stmt)
     companies = list(result.scalars().all())
 
-    out = []
-    for company in companies:
-        count_result = await db.execute(
-            select(func.count(Job.id)).where(Job.company_id == company.id, Job.is_active.is_(True))
+    # One grouped count for the whole page of companies instead of a COUNT per
+    # company (the previous N+1).
+    company_ids = [c.id for c in companies]
+    counts: dict[int, int] = {}
+    if company_ids:
+        counts_result = await db.execute(
+            select(Job.company_id, func.count(Job.id))
+            .where(Job.company_id.in_(company_ids), Job.is_active.is_(True))
+            .group_by(Job.company_id)
         )
-        out.append(_company_dict(company, count_result.scalar() or 0))
-    return out
+        counts = {cid: total for cid, total in counts_result.all()}
+
+    return [_company_dict(company, counts.get(company.id, 0)) for company in companies]
 
 
 async def _tool_get_company_detail(db: AsyncSession, company_name: str) -> dict:
@@ -527,7 +534,12 @@ async def _run_chat(payload: ChatRequest, db: AsyncSession, user: User | None) -
         return _fallback_response("Something went wrong on my end — please try again.")
 
 
-@router.post("", response_model=ChatResponse, summary="Chat with the AI Job Search Assistant")
+@router.post(
+    "",
+    response_model=ChatResponse,
+    summary="Chat with the AI Job Search Assistant",
+    dependencies=[Depends(RateLimit(limit=40, window_seconds=3600, scope="chat"))],
+)
 async def chat(
     payload: ChatRequest,
     db: Annotated[AsyncSession, Depends(get_db)],

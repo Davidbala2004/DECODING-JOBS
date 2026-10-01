@@ -8,6 +8,10 @@ header secret is enough.
 `require_session` is the real identity guard used by every endpoint that
 used to trust a bare client-supplied email string — it requires a valid
 bearer session token (see app/services/auth.py) and returns the actual User.
+
+`require_session_token` is the same guard for the handful of endpoints that
+must act on the caller's *own* session rather than on the user (sign-out),
+where the raw token — not just the resolved User — is what's needed.
 """
 
 import secrets
@@ -74,3 +78,23 @@ async def optional_session(
     if not authorization:
         return None
     return await require_session(db, authorization)
+
+
+_BEARER_PREFIX = "bearer "
+
+
+async def require_session_token(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> tuple[User, str]:
+    """`require_session`, but also hands back the raw bearer token so a caller
+    can revoke exactly this session (see POST /auth/logout).
+
+    Verified through `require_session` first, so the token returned here is
+    always one that resolved to a live session.
+    """
+    user = await require_session(db, authorization)
+    # require_session has already proven the scheme is ``Bearer``, so the
+    # prefix strip is safe here.
+    raw_token = (authorization or "")[len(_BEARER_PREFIX):].strip()
+    return user, raw_token

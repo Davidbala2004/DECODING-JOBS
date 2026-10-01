@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.ratelimit import RateLimit
 from app.core.security import optional_session, require_session
 from app.db.session import get_db
 from app.models.domain import Application, ApplicationStatus, EmailEvent, Job, User
@@ -162,6 +163,7 @@ async def update_round(
     response_model=ApplicationRead,
     status_code=status.HTTP_201_CREATED,
     summary="Submit a job application via the Document Vault's 1-Click Apply flow",
+    dependencies=[Depends(RateLimit(limit=60, window_seconds=3600, scope="apply"))],
 )
 async def submit_application(
     payload: ApplicationSubmitRequest,

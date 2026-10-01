@@ -4,12 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Sparkles,
   Send,
   Loader2,
   MapPin,
   Briefcase,
-  Bot,
   User,
   RotateCcw,
   Paperclip,
@@ -20,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { BloomIcon } from "@/components/icons/BloomIcon";
 import { useMapSelectionStore } from "@/lib/store";
 import { useIdentityStore } from "@/lib/identityStore";
 import {
@@ -50,6 +49,15 @@ const ACCEPTED_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
+const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
+
+/** Accepts a file by declared type, falling back to extension — some OS/browser
+ * combos report an empty or generic type for a perfectly valid .docx. */
+function isAcceptedResume(file: File): boolean {
+  if (ACCEPTED_TYPES.includes(file.type)) return true;
+  const name = file.name.toLowerCase();
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
 
 function logoUrlFor(websiteUrl: string | null): string | null {
   if (!websiteUrl) return null;
@@ -285,8 +293,15 @@ export function ChatAssistant({
   };
 
   const handleFile = async (file: File | undefined) => {
-    if (!file || !email || isBusy) return;
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    if (!file || isBusy) return;
+    if (!email) {
+      setTurns((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sign in first and I can read your resume — then score it and tailor it to a role." },
+      ]);
+      return;
+    }
+    if (!isAcceptedResume(file)) {
       setTurns((prev) => [...prev, { role: "assistant", content: "Only PDF and DOCX resumes are supported." }]);
       return;
     }
@@ -349,27 +364,31 @@ export function ChatAssistant({
       {activeResume && (
         <div className="mb-2 flex items-center gap-2">
           <div className="relative" ref={resumeMenuRef}>
-            <button
-              type="button"
-              onClick={() => setResumeMenuOpen((v) => !v)}
-              className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-[12.5px] font-semibold text-green-700 transition-all hover:bg-green-100"
-            >
-              <FileText className="h-3 w-3" />
-              <span className="max-w-[160px] truncate">{activeResume.filename}</span>
-              {(resumes?.length ?? 0) > 1 && (
-                <ChevronDown className={cn("h-3 w-3 transition-transform", resumeMenuOpen && "rotate-180")} />
-              )}
+            {/* Two sibling buttons, not a button nested in a button — the
+                latter is invalid HTML and trips React's hydration checks. */}
+            <div className="flex items-center gap-0.5 rounded-full bg-green-50 text-[12.5px] font-semibold text-green-700">
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveResumeId(null);
-                }}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-green-200/60"
+                onClick={() => setResumeMenuOpen((v) => !v)}
+                title="Choose resume"
+                className="flex items-center gap-1.5 rounded-l-full py-1.5 pl-3 pr-1 transition-colors hover:bg-green-100"
+              >
+                <FileText className="h-3 w-3" />
+                <span className="max-w-[160px] truncate">{activeResume.filename}</span>
+                {(resumes?.length ?? 0) > 1 && (
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", resumeMenuOpen && "rotate-180")} />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveResumeId(null)}
+                aria-label="Detach resume"
+                title="Detach resume"
+                className="mr-1 rounded-full p-1 transition-colors hover:bg-green-200/60"
               >
                 <X className="h-2.5 w-2.5" />
               </button>
-            </button>
+            </div>
             {resumeMenuOpen && (resumes?.length ?? 0) > 1 && (
               <div
                 className="absolute bottom-full left-0 z-20 mb-1.5 w-56 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
@@ -466,16 +485,19 @@ export function ChatAssistant({
 
       {/* Header */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-emerald-100 bg-gradient-to-r from-white to-green-50/40 px-3 py-3 sm:px-5">
-        <button
-          type="button"
-          onClick={onOpenHistory}
-          title="Conversation history"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-all hover:bg-green-50 hover:text-green-700 lg:hidden"
-        >
-          <PanelLeft className="h-4 w-4" />
-        </button>
+        {email && (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            title="Conversation history"
+            aria-label="Conversation history"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-all hover:bg-green-50 hover:text-green-700 lg:hidden"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </button>
+        )}
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-md shadow-green-500/20">
-          <Sparkles className="h-4 w-4 text-white" />
+          <BloomIcon className="h-4 w-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">AI Job Search Assistant</p>
@@ -505,7 +527,7 @@ export function ChatAssistant({
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-24" style={{ animation: "heroFadeIn 0.35s ease-out both" }}>
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
-              <Bot className="h-6 w-6 text-green-500" />
+              <BloomIcon className="h-7 w-7 text-green-500" />
             </div>
             <div>
               <p className="text-base font-semibold text-gray-900">What are you looking for?</p>
@@ -545,7 +567,7 @@ export function ChatAssistant({
                       turn.role === "user" ? "bg-gray-100 text-gray-500" : "bg-green-600 text-white"
                     )}
                   >
-                    {turn.role === "user" ? <User className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {turn.role === "user" ? <User className="h-3.5 w-3.5" /> : <BloomIcon className="h-3.5 w-3.5" />}
                   </div>
                   <div className={cn("flex flex-col gap-2", turn.role === "user" ? "max-w-[85%] items-end" : "max-w-[95%]")}>
                     <div
@@ -580,7 +602,7 @@ export function ChatAssistant({
               {isBusy && (
                 <div className="flex gap-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white">
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <BloomIcon className="h-3.5 w-3.5" />
                   </div>
                   <div className="flex items-center gap-1 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
                     {[0, 1, 2].map((i) => (

@@ -18,7 +18,7 @@ A map-based job search command center for tech students. Explore real companies 
 - **Job Search** — Full-text search with autocomplete suggestions
 - **Company Panel** — Only appears when you click a pin/card (floats over the map, doesn't reserve permanent screen width); shows logo, about/description, salary, work mode, sentiment (pros/cons), culture score
 - **1-Click Apply** — Submit applications with resume selection
-- **List Your Startup** (`/register`) — founders self-register their company and post roles directly, verified instantly by matching their work-email domain to the company's website (see [below](#list-your-startup-register))
+- **List Your Startup** (`/register`) — founders self-register their company and post roles directly, verified by signing in with an email whose domain matches the company's website (see [below](#list-your-startup-register))
 - **AI Job Search Assistant** (`/assistant`) — chat grounded in this app's real data, resume upload + ATS scoring + iterative AI rewriting, and company/role-specific interview prep (see [below](#ai-job-search-assistant-assistant))
 - **Application Tracker** (`/tracker`) — a Kanban board with email-based auto-advancement from forwarded interview emails, showing which resume was used per application, and a "Did you apply?" nudge on cards that have sat in Saved for 3+ days
 - **Real Sessions** — sign in via a magic link emailed to you, or Google — both issue a real bearer session token; every endpoint touching personal data requires it (see [below](#identity-sessions--preferences))
@@ -187,13 +187,13 @@ Open **http://localhost:3000** in your browser.
 | GET | `/api/v1/companies/types` | Company type categories |
 | GET | `/api/v1/companies/cities` | Distinct cities |
 | POST | `/api/v1/companies/seed` | Seed/upsert a company from the ingestion pipeline |
-| POST | `/api/v1/companies/register` | Founder self-registers a company (verified by work-email domain) |
+| POST | `/api/v1/companies/register` | Founder self-registers a company (session-verified against its website domain) |
 | GET | `/api/v1/jobs` | List active jobs |
 | GET | `/api/v1/jobs/search` | Full-text job search |
 | GET | `/api/v1/jobs/suggestions` | Autocomplete suggestions |
 | GET | `/api/v1/jobs/{id}` | Single job detail |
 | POST | `/api/v1/jobs/seed` | Seed/upsert a job from the ingestion pipeline |
-| POST | `/api/v1/jobs/register` | Founder posts a role under their own (verified) company |
+| POST | `/api/v1/jobs/register` | Founder posts a role under their own company (session-verified against that company's website domain) |
 | POST | `/api/v1/jobs/expire-stale` | Mark pipeline-sourced jobs inactive if unrefreshed for N days |
 | POST | `/api/v1/applications/submit` | Submit job application |
 | POST | `/api/v1/applications/save` | Save a job to the tracker without applying |
@@ -205,7 +205,7 @@ Open **http://localhost:3000** in your browser.
 | GET | `/api/v1/chat/conversations` | List a user's chat conversations |
 | GET | `/api/v1/chat/conversations/{id}/messages` | Full message history for a conversation |
 | DELETE | `/api/v1/chat/conversations/{id}` | Delete a conversation |
-| POST | `/api/v1/auth/request-link` | Email a one-time magic sign-in link (returns `dev_magic_link` if SendGrid isn't configured) |
+| POST | `/api/v1/auth/request-link` | Email a one-time magic sign-in link (rate-limited per IP and per address; returns `dev_magic_link` only outside production when SendGrid isn't configured) |
 | GET | `/api/v1/auth/verify` | Exchange a magic-link token for a real session (401 if invalid/expired/reused) |
 | POST | `/api/v1/users/google-auth` | Sign in with Google — verifies the ID token, issues the same kind of session |
 | GET | `/api/v1/users/preferences` | Get the signed-in user's job-search preferences (session required) |
@@ -213,6 +213,8 @@ Open **http://localhost:3000** in your browser.
 | POST | `/api/v1/users/saved-searches` | Save the current map filters as a shortcut, optionally with email alerts |
 | GET | `/api/v1/users/saved-searches` | List the signed-in user's saved searches |
 | DELETE | `/api/v1/users/saved-searches/{id}` | Delete a saved search (session-owner checked) |
+| GET | `/api/v1/users/me/export` | Download everything the signed-in account holds (data portability) |
+| DELETE | `/api/v1/users/me` | Permanently delete the signed-in account and all its data |
 | POST | `/api/v1/alerts/run` | Sweep saved searches with alerts enabled, email matching new jobs (ingestion-key protected) |
 | POST | `/api/v1/recruiters/identify` | Verify the signed-in user's email against a registered company's domain |
 | GET | `/api/v1/recruiters/candidates` | Search masked candidate profiles by role/city/work-mode/experience/notice-period (session required) |
@@ -309,8 +311,14 @@ cd infra && docker compose up -d --build
 # Frontend lint
 cd apps/web && npm run lint
 
+# Frontend typecheck
+cd apps/web && npx tsc --noEmit
+
 # Frontend build check
 cd apps/web && npm run build
+
+# Frontend browser verification (needs the dev server + backend running)
+cd apps/web && npm run verify
 
 # Backend tests (runs against the live dev server on :8000 inside the
 # container — real HTTP, not an in-process ASGI transport, since that
@@ -323,6 +331,12 @@ cd infra && docker compose down
 # Stop and wipe database
 cd infra && docker compose down -v
 ```
+
+### Testing & CI
+
+- **Unit tests** (`services/core-api/tests/test_units.py`) cover the pure logic — domain verification, department classification, geo jitter, the rate limiter, file-type resolution, alert-filter matching — and need no database: `docker exec -w /app decoding-jobs-core-api python -m pytest tests/test_units.py -v` (or `python -m pytest tests/test_units.py` anywhere with a `DATABASE_URL` set).
+- **Integration tests** (`test_auth`, `test_applications_ownership`, `test_recruiters`) run against the live core-api over real HTTP.
+- **CI** (`.github/workflows/ci.yml`) brings up the real docker-compose stack and runs the full backend suite, then typechecks, lints, and builds the frontend on every push and PR.
 
 ---
 
@@ -351,6 +365,7 @@ Tables are created via SQL scripts in `infra/init-db/` (run once on first contai
 | `25-add-sessions.sql` | `magic_link_tokens` + `sessions` tables; `jobs.min_experience_years` made nullable (was defaulting to a misleading `0`) |
 | `26-deactivate-seed-companies.sql` | Deactivates the 5 placeholder jobs on the 3 hand-seeded demo companies (ids 1-3, predate real-data ingestion) — their `*.example.com` apply links don't resolve |
 | `27-fix-mojibake.sql` | Repairs Adzuna titles/descriptions that arrived double-encoded upstream (garbage like `â\u0080\u0093` instead of `–`) |
+| `28-add-performance-indexes.sql` | Indexes backing the filter facets, active-job counts, and the alert sweep |
 
 ### Reset Database
 
@@ -437,7 +452,7 @@ A third page alongside the map and the tracker: a Claude/ChatGPT-style chat assi
 - **Chat** — ask about roles, cities, or companies ("Remote frontend roles in Bengaluru"); the assistant calls real search/filter tools and replies with actual result cards that link back into the map. Ask for interview prep ("prepare me for a Razorpay backend interview") and it pulls that company's real culture/sentiment data plus the real job description when one exists — general interview-format advice is clearly separated from that real data, never presented as a leaked/real question. Replies render as full Markdown (tables, headers, lists).
 - **Resume Coach** — attach a PDF/DOCX resume in-chat (≤5MB, paperclip icon, no separate upload page); it's parsed to text (`pypdf`/`python-docx`) and scored for ATS-friendliness (0–100) with strengths/weaknesses/rewrite suggestions via the same Groq key used above. Ask it to rewrite the resume and it produces a full ATS-safe Markdown rewrite (single-column, standard section headers, plain bullets — no tables/graphics that break ATS parsers); ask for further edits and it revises that same rewritten version instead of restarting from the raw original, like any other iterative chat assistant. Re-analyzing against a specific job (via "Prep for this role" on any job card in the map's side panel, or by picking a resume while `?jobId=` is set) also surfaces missing keywords from that job's real description.
 - **Chat History** — every conversation is persisted (`chat_conversations`/`chat_messages` tables) and listed in a sidebar, so you can pick up an old thread instead of losing it on refresh.
-- **Identity** — same identity gate as the tracker (`useIdentityStore`/`EmailGate` — magic-link email or Google sign-in), no separate login. Chat itself still works signed-out (anonymous, stateless), same as before this existed.
+- **Identity** — chat works signed-out (anonymous, stateless — the panel just does not persist anything, and resume upload prompts you to sign in); signing in with the same magic-link/Google flow as the tracker unlocks saved conversation history and the Resume Coach.
 
 Needs the same `GROQ_API_KEY` as the email pipeline above — unset, both chat and resume analysis reply with a friendly "not configured yet" instead of erroring.
 
@@ -447,7 +462,7 @@ Needs the same `GROQ_API_KEY` as the email pipeline above — unset, both chat a
 
 **Identity is a real bearer session**, not a client-supplied email string. Two ways to get one, both issuing the same kind of session token via `create_session()`:
 
-- **Magic link** — `POST /auth/request-link {email}` emails a single-use, 15-minute link (`GET /auth/verify?token=`) via the existing SendGrid client. Without `SENDGRID_API_KEY` configured, the response includes a `dev_magic_link` field with the raw link instead, so the whole flow is testable locally with no real email delivery — that field is never present once a real send key is set.
+- **Magic link** — `POST /auth/request-link {email}` emails a single-use, 15-minute link (`GET /auth/verify?token=`) via the existing SendGrid client. Outside production, if `SENDGRID_API_KEY` isn't configured, the response includes a `dev_magic_link` with the raw link so the flow is testable locally with no real email delivery. That field is **never** returned when `ENVIRONMENT=production` (returning it there would let any visitor mint a session for any address), and it disappears as soon as a real send key is set. `request-link` is rate-limited per IP and per address, as are chat and application submission.
 - **Google Sign-In** — `POST /users/google-auth` verifies the ID token server-side, then issues a session the same way.
 
 Every endpoint that touches personal data (preferences, saved searches, the tracker, resumes, chat history, recruiter search/unlock) requires `Authorization: Bearer <session_token>` via the `require_session` FastAPI dependency — `lib/api.ts` attaches it automatically to every call and clears the stored session on any `401`. Two flows stay intentionally anonymous-friendly via `optional_session` (a real session is used if present, but isn't required): 1-Click Apply and the AI Assistant chat, so a first-time visitor never has to sign in just to try those.
@@ -461,6 +476,8 @@ Every endpoint that touches personal data (preferences, saved searches, the trac
 - **Visible to recruiters** toggle (default on) — turning it off removes the profile from recruiter candidate search entirely, enforced server-side (not just hidden in the UI)
 
 The map's **"For You"** toggle (only shown once a signed-in user has target roles set) filters the map to companies with a job matching those roles, and the map defaults to the user's top preferred city on first load.
+
+**Your data, your call** — `/profile` has a "Your data" section to **download** everything the account holds (`GET /users/me/export`) or **permanently delete** it (`DELETE /users/me`). Deletion clears the rows that don't cascade on their own (orphaned applications, magic-link tokens) before removing the user, so nothing is left behind. User-facing [Privacy](/privacy) and [Terms](/terms) pages live in the app.
 
 ---
 
@@ -488,8 +505,8 @@ The reverse of the map: instead of a job seeker browsing companies, a company's 
 A founder self-service flow — the primary way new companies and roles get onto the map without needing a scraper or an admin queue. Reachable from the top nav's **For Companies** menu, grouped there together with [For Recruiters](#recruiter-candidate-search-recruiters) so the job-seeker nav doesn't grow by one item every time a company-side feature ships.
 
 1. **Register the company** — only name, website, and city are required up front; sector, stage, area, exact office coordinates, team size, founded year, LinkedIn, and description all live behind an "Add more details (optional)" toggle instead of 13 fields shown at once. Coordinates fall back to a jittered city-center placement if omitted.
-2. **Verification** — the founder's email domain must match the company's website domain (`you@acme.com` for `acme.com`). Personal providers (Gmail, Yahoo, Outlook, etc.) are rejected outright, and a domain mismatch gets a specific, actionable error — no admin review needed, but also no way to claim a company you don't control the domain for.
-3. **Post roles** — same progressive-disclosure pattern: title, description, and work mode up front; employment type, salary range, and apply link behind their own optional toggle. Every posting re-verifies the founder's email against that specific company's domain, so only whoever controls the domain can add roles to it.
+2. **Verification** — you must be **signed in** first (magic link or Google), and that session-verified email's domain must match the company's website domain (`you@acme.com` for `acme.com`). Personal providers (Gmail, Yahoo, Outlook, etc.) are rejected outright, and a domain mismatch gets a specific, actionable error — no admin review needed, but also no way to claim a company you don't control the domain for. Because identity comes from the session rather than a typed string, the domain match actually proves you control the domain.
+3. **Post roles** — same progressive-disclosure pattern: title, description, and work mode up front; employment type, salary range, and apply link behind their own optional toggle. Every posting re-verifies the signed-in founder against that specific company's domain, so only whoever controls the domain can add roles to it.
 
 This is intentionally the long-term, sustainable data source for cities the scraper pipeline doesn't reach (see [Real Data Ingestion](#real-data-ingestion) below) — it's first-party (the company itself), has no third-party licensing concerns, and can't go stale the way an aggregated feed can.
 

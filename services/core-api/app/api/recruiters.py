@@ -14,7 +14,7 @@ candidates' resumes.
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,12 +85,27 @@ async def search_candidates(
 ) -> list[CandidateSearchResult]:
     company = await _verify_recruiter(db, current_user.email)
 
-    result = await db.execute(
-        select(User).where(
-            (User.target_roles.isnot(None) | User.skills.isnot(None))
-            & User.profile_visible_to_recruiters.is_(True)
-        )
+    stmt = select(User).where(
+        (User.target_roles.isnot(None) | User.skills.isnot(None))
+        & User.profile_visible_to_recruiters.is_(True)
     )
+    # Every scalar filter is pushed into SQL so the query doesn't pull the
+    # whole users table into Python and filter it in memory. Only the role/
+    # skill keyword match — which spans two JSONB arrays — stays in Python.
+    if city:
+        stmt = stmt.where(User.preferred_cities.contains([city]))
+    if work_mode:
+        stmt = stmt.where(User.preferred_work_mode == work_mode)
+    if notice_period:
+        stmt = stmt.where(User.notice_period == notice_period)
+    if experience_min is not None:
+        stmt = stmt.where(func.coalesce(User.experience_years, 0) >= experience_min)
+    if experience_max is not None:
+        stmt = stmt.where(func.coalesce(User.experience_years, 0) <= experience_max)
+    if verified_only:
+        stmt = stmt.where(or_(User.github_verified, User.linkedin_verified, User.leetcode_verified))
+
+    result = await db.execute(stmt)
     candidates = list(result.scalars().all())
 
     result = await db.execute(select(CandidateUnlock.user_id).where(CandidateUnlock.company_id == company.id))
@@ -108,18 +123,8 @@ async def search_candidates(
     role_terms = [t.strip().lower() for t in (role or "").split() if t.strip()]
 
     def matches(candidate: User) -> bool:
-        if city and city not in (candidate.preferred_cities or []):
-            return False
-        if work_mode and candidate.preferred_work_mode != work_mode:
-            return False
-        if experience_min is not None and (candidate.experience_years or 0) < experience_min:
-            return False
-        if experience_max is not None and (candidate.experience_years or 0) > experience_max:
-            return False
-        if notice_period and candidate.notice_period != notice_period:
-            return False
-        if verified_only and not (candidate.github_verified or candidate.linkedin_verified or candidate.leetcode_verified):
-            return False
+        # Only the role/skill keyword overlap is left to evaluate in Python —
+        # all the scalar filters were applied in the SQL query above.
         if role_terms:
             haystack = " ".join((candidate.target_roles or []) + (candidate.skills or [])).lower()
             if not any(term in haystack for term in role_terms):

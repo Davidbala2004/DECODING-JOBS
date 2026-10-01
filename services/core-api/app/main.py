@@ -1,6 +1,7 @@
 """FastAPI entry point for the DECODING JOBS core-api service."""
 
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -24,11 +25,32 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Manage resources that must live for the whole process lifetime."""
     logger.info("Database engine initialized for %s", settings.ENVIRONMENT)
+    _warn_on_insecure_production_config()
     try:
         yield
     finally:
         await engine.dispose()
         logger.info("Database engine disposed")
+
+
+def _warn_on_insecure_production_config() -> None:
+    """Loudly flag the misconfigurations that silently weaken auth in prod.
+
+    These don't hard-fail the boot (a deploy shouldn't die over a warning),
+    but they are exactly the settings that turned "missing key" into "open
+    door" in the past, so they belong in the logs on every start.
+    """
+    if settings.ENVIRONMENT != "production":
+        return
+    if not settings.SENDGRID_API_KEY:
+        logger.warning(
+            "PRODUCTION without SENDGRID_API_KEY: magic-link emails cannot be sent, "
+            "and the dev sign-in link is disabled — no one can sign in via email."
+        )
+    if not settings.GOOGLE_CLIENT_ID:
+        logger.warning("PRODUCTION without GOOGLE_CLIENT_ID: Google Sign-In is unavailable.")
+    if not settings.INGESTION_API_KEY:
+        logger.warning("PRODUCTION without INGESTION_API_KEY: ingestion endpoints are closed.")
 
 
 app = FastAPI(
@@ -46,7 +68,32 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Without this the browser hides these from JS on a cross-origin call —
+    # the map's "500+" indicator would silently never light up.
+    expose_headers=["X-Result-Capped"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """One structured line per request: method, path, status, duration.
+
+    Minimal, dependency-free observability — enough to see slow endpoints
+    and error rates in the container logs without wiring up a full APM.
+    Health probes are skipped so they don't drown out real traffic.
+    """
+    started = time.perf_counter()
+    response = await call_next(request)
+    if request.url.path not in ("/health", "/health/db"):
+        duration_ms = (time.perf_counter() - started) * 1000
+        logger.info(
+            "%s %s -> %s (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+    return response
 
 app.include_router(companies.router, prefix=settings.API_V1_PREFIX)
 app.include_router(jobs.router, prefix=settings.API_V1_PREFIX)

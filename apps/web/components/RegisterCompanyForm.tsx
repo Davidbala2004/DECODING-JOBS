@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { useMapSelectionStore } from "@/lib/store";
+import { useIdentityStore } from "@/lib/identityStore";
+import { EmailGate } from "@/components/EmailGate";
 import { registerCompany, registerJob, type Company, type EmploymentType, type WorkMode } from "@/lib/api";
 
 const SECTORS = ["AI", "SaaS", "Fintech", "Consumer", "Healthtech", "Edtech", "Cloud/Infra", "Mobile", "Deeptech", "Other"];
@@ -75,12 +77,30 @@ function MoreDetailsToggle({
   );
 }
 
+/**
+ * Founder self-registration is gated behind a real session. The backend
+ * verifies the *signed-in* email's domain against the company's website, so a
+ * founder must first prove they control that mailbox (magic link or Google) —
+ * typing an address at the right domain is no longer enough.
+ */
 export function RegisterCompanyForm() {
+  const email = useIdentityStore((s) => s.email);
+  if (!email) {
+    return (
+      <EmailGate
+        title="List your startup"
+        subtitle="Sign in with your company work email — we verify it against your website domain"
+      />
+    );
+  }
+  return <RegisterForm email={email} />;
+}
+
+function RegisterForm({ email }: { email: string }) {
   const router = useRouter();
   const setSelectedCompanyId = useMapSelectionStore((s) => s.setSelectedCompanyId);
   const [step, setStep] = useState<"company" | "role" | "done">("company");
   const [company, setCompany] = useState<Company | null>(null);
-  const [founderEmail, setFounderEmail] = useState("");
   const [showMoreCompanyDetails, setShowMoreCompanyDetails] = useState(false);
   const [showMoreRoleDetails, setShowMoreRoleDetails] = useState(false);
 
@@ -93,7 +113,6 @@ export function RegisterCompanyForm() {
   const companyMutation = useMutation({
     mutationFn: () =>
       registerCompany({
-        founderEmail,
         name: form.name,
         websiteUrl: form.websiteUrl,
         description: form.description || undefined,
@@ -122,7 +141,6 @@ export function RegisterCompanyForm() {
   const jobMutation = useMutation({
     mutationFn: () =>
       registerJob({
-        founderEmail,
         companyId: company!.id,
         title: roleForm.title,
         description: roleForm.description,
@@ -179,16 +197,14 @@ export function RegisterCompanyForm() {
           className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]"
         >
           <div>
-            <FieldLabel required>Your work email</FieldLabel>
-            <Input
-              type="email"
-              required
-              placeholder="you@yourcompany.com"
-              value={founderEmail}
-              onChange={(e) => setFounderEmail(e.target.value)}
-            />
+            <FieldLabel>Verifying as</FieldLabel>
+            <div className="flex items-center gap-2 rounded-lg border border-green-100 bg-green-50/60 px-3 py-2.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+              <span className="truncate text-sm font-semibold text-green-800">{email}</span>
+            </div>
             <p className="mt-1 text-[12px] text-gray-400">
-              Must match your company&apos;s website domain — that&apos;s how we verify it&apos;s really yours.
+              Your email domain must match your company&apos;s website — that&apos;s how we verify it&apos;s really yours.
+              Sign in with a different address if this isn&apos;t your work email.
             </p>
           </div>
 

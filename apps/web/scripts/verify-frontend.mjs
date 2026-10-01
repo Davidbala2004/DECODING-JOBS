@@ -1,19 +1,17 @@
 /**
  * Browser-level verification for the DECODING JOBS web app.
  *
- * Confirms, against a Next.js dev server already running at
- * http://localhost:3000 (see scripts/verify-stack.sh for the orchestrated
- * full-stack run):
- *   1. The app boots with zero compilation errors (no Next.js dev error
- *      overlay) and zero console/hydration errors.
- *   2. The map-driven Zustand `selectedCompanyId` selection actually
- *      propagates: clicking a live company marker updates CompanySidePanel
- *      to show that company's real name, proving the store → query →
- *      re-render chain works end to end (not just that the store variable
- *      changed in isolation).
+ * Runs against a Next.js dev server already serving at http://localhost:3000
+ * (see scripts/verify-stack.sh for the orchestrated full-stack run). It proves
+ * the shell renders, the map data loads, and selecting a company on the client
+ * propagates through state into the detail panel — over the real DOM.
  *
  * Usage: node scripts/verify-frontend.mjs
  * Requires: `npx playwright install chromium` (one-time, cached afterward).
+ *
+ * Selectors here are intentionally tied to the *current* UI (brand text, grid
+ * cards). If the markup changes, update this file in the same change — a
+ * verification script that asserts removed UI is worse than none.
  */
 
 import { chromium } from "playwright";
@@ -49,12 +47,9 @@ try {
   process.exit(1);
 }
 
-// 1. No Next.js dev-mode compilation error overlay. Note: <nextjs-portal>
-// itself is Next's *persistent* dev-mode indicator (the "N" badge, always
-// present in dev regardless of errors) — checking for its mere existence is
-// a false positive. What actually indicates a blocking compile/runtime
-// error is specific error-dialog text, which Playwright can find even
-// inside the portal's shadow DOM.
+// 1. No Next.js dev-mode compile/runtime error overlay. (<nextjs-portal> alone
+//    is Next's persistent dev indicator, so checking for specific error text
+//    avoids a false positive.)
 const errorOverlayCount = await page
   .getByText(/Failed to compile|Build Error|Unhandled Runtime Error/i)
   .count();
@@ -64,57 +59,58 @@ if (errorOverlayCount === 0) {
   fail("Next.js dev error overlay is present — a compile error is blocking the app");
 }
 
-// 2. App shell actually rendered (proves no silent white-screen failure).
+// 2. App shell rendered (proves no silent white-screen failure).
 try {
-  await page.waitForSelector("text=My Vault", { timeout: TIMEOUT_MS });
-  pass('App shell rendered ("My Vault" nav visible)');
+  await page.getByText("DECODING", { exact: false }).first().waitFor({ timeout: TIMEOUT_MS });
+  pass("App shell rendered (brand visible)");
 } catch {
-  fail('App shell did not render — "My Vault" nav never appeared');
+  fail("App shell did not render — brand text never appeared");
 }
 
-// 3. Empty state renders before any company is selected (selectedCompanyId
-//    starts null in the Zustand store).
-try {
-  await page.waitForSelector("text=Select a company on the map", { timeout: TIMEOUT_MS });
-  pass("Empty state rendered — confirms selectedCompanyId starts null");
-} catch {
-  fail("Empty state did not render for the initial (unselected) state");
-}
-
-// 4. Live map markers loaded from the backend.
-let markerHandle;
-try {
-  markerHandle = await page.waitForSelector('button[aria-label^="View "]', {
-    timeout: TIMEOUT_MS,
-  });
-  const markerLabel = await markerHandle.getAttribute("aria-label");
-  pass(`Live company marker rendered from backend data (${markerLabel})`);
-} catch {
-  fail("No company markers rendered — map/backend data did not load");
-}
-
-// 5. Clicking a marker propagates selectedCompanyId through the Zustand
-//    store into a TanStack Query fetch and back out into the DOM — the
-//    clearest possible proof that the state selection logic actually works,
-//    not just that a variable changed somewhere unobserved.
-if (markerHandle) {
-  const companyName = (await markerHandle.getAttribute("aria-label")).replace("View ", "");
-  await markerHandle.click();
+// 3. Top navigation links are present.
+for (const label of ["AI Assistant", "App Tracker", "Preferences"]) {
   try {
-    await page.waitForSelector(`h1:has-text("${companyName}")`, { timeout: TIMEOUT_MS });
-    pass(
-      `Zustand selectedCompanyId propagated correctly: clicking the "${companyName}" marker ` +
-        `updated CompanySidePanel's header to "${companyName}"`
-    );
+    await page.getByRole("link", { name: label }).first().waitFor({ timeout: TIMEOUT_MS });
+    pass(`Top nav link "${label}" rendered`);
   } catch {
-    fail(
-      `Clicked the "${companyName}" marker but CompanySidePanel never updated to show it — ` +
-        "selectedCompanyId did not propagate"
-    );
+    fail(`Top nav link "${label}" is missing`);
   }
 }
 
-// 6. No console/hydration errors accumulated across the whole run.
+// 4. Map toolbar rendered (search box is the stablest anchor for it).
+try {
+  await page.getByPlaceholder(/Search job roles/i).waitFor({ timeout: TIMEOUT_MS });
+  pass("Map toolbar rendered (search input visible)");
+} catch {
+  fail("Map toolbar did not render — search input never appeared");
+}
+
+// 5. Switch to Grid view and confirm company cards load from the backend.
+let companyName = null;
+try {
+  await page.getByRole("button", { name: "Grid", exact: true }).click();
+  const firstCard = page.locator("div.grid > button").first();
+  await firstCard.waitFor({ timeout: TIMEOUT_MS });
+  companyName = (await firstCard.locator("p").first().innerText()).trim();
+  pass(`Company grid loaded from backend data (${companyName})`);
+} catch {
+  fail("No company cards rendered — map/backend data did not load (is core-api running and seeded?)");
+}
+
+// 6. Selecting a company propagates through state into the detail panel: the
+//    side panel's <h1> should show the company we clicked. This is the clearest
+//    proof the selection chain works end to end, not just that a variable changed.
+if (companyName) {
+  try {
+    await page.locator("div.grid > button").first().click();
+    await page.locator("h1", { hasText: companyName }).first().waitFor({ timeout: TIMEOUT_MS });
+    pass(`Selection propagated: clicking "${companyName}" opened its detail panel`);
+  } catch {
+    fail(`Clicked "${companyName}" but the detail panel never showed it — selection did not propagate`);
+  }
+}
+
+// 7. No console/hydration errors accumulated across the whole run.
 if (consoleErrors.length === 0) {
   pass("Zero console errors (no hydration mismatches or runtime exceptions)");
 } else {

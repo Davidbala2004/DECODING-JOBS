@@ -2,15 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ListChecks, MapPin, Radio, Rocket, UserCog, Users2, Building2, ChevronDown } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ListChecks,
+  MapPin,
+  Radio,
+  Rocket,
+  UserCog,
+  Users2,
+  Building2,
+  ChevronDown,
+  LogOut,
+  ShieldOff,
+  UserRound,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { BloomIcon } from "@/components/icons/BloomIcon";
 import { Switch } from "@/components/ui/switch";
 import { useIdentityStore } from "@/lib/identityStore";
 import { useLiveUpdatesStore } from "@/lib/liveUpdatesStore";
-import { getApplicationBoard } from "@/lib/api";
+import { getApplicationBoard, logout, logoutAllSessions } from "@/lib/api";
 
 const LIVE_POLL_INTERVAL_MS = 15_000;
 
@@ -45,6 +58,30 @@ function NavLink({
           {badge}
         </span>
       )}
+      {active && (
+        <span className="absolute inset-x-2.5 -bottom-[9px] h-0.5 rounded-full bg-green-500 sm:inset-x-3" />
+      )}
+    </Link>
+  );
+}
+
+// Its own component (not routed through NavLink's generic `icon` prop)
+// because BloomIcon needs real props — a pulsing center node, variable
+// stroke weight — that a plain lucide icon swap-in doesn't.
+function AiAssistantLink({ active }: { active: boolean }) {
+  return (
+    <Link
+      href="/assistant"
+      className={cn(
+        "relative flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all sm:px-3",
+        active ? "text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+      )}
+    >
+      {active && (
+        <span className="absolute inset-0 rounded-lg bg-green-50" style={{ animation: "navActiveFadeIn 0.2s ease-out" }} />
+      )}
+      <BloomIcon className="relative h-[18px] w-[18px]" active={active} />
+      <span className="relative hidden sm:inline">AI Assistant</span>
       {active && (
         <span className="absolute inset-x-2.5 -bottom-[9px] h-0.5 rounded-full bg-green-500 sm:inset-x-3" />
       )}
@@ -116,6 +153,127 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
   );
 }
 
+// Account menu. Before this existed there was no way to sign out at all —
+// which made the "sign in with a different address" instruction on /register
+// impossible to follow, and left a bearer token live on a shared machine
+// forever. Deliberately last in the bar: that's where people look for it.
+function AccountMenu() {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const email = useIdentityStore((s) => s.email);
+  const clearIdentity = useIdentityStore((s) => s.clearIdentity);
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  async function signOut(everywhere: boolean) {
+    setBusy(true);
+    try {
+      await (everywhere ? logoutAllSessions() : logout());
+    } catch {
+      // Swallowed on purpose: the user asked to sign out, so a failed network
+      // call must not leave them stuck signed in. Local identity is cleared
+      // below regardless — the token stays server-side but is forgotten here.
+    }
+    clearIdentity();
+    // Without this, the next person on this machine sees the previous user's
+    // tracker board and preferences rendered from the in-memory cache.
+    queryClient.clear();
+    setBusy(false);
+    setOpen(false);
+    router.push("/");
+  }
+
+  // Signed out — a plain way back in, rather than making people find /tracker.
+  if (!email) {
+    return (
+      <Link
+        href="/tracker"
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-all hover:bg-green-50 hover:text-green-700 sm:px-3"
+      >
+        <UserRound className="h-4 w-4" />
+        <span className="hidden sm:inline">Sign in</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Account menu — signed in as ${email}`}
+        className={cn(
+          "relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-all sm:px-2.5",
+          open ? "bg-green-50 text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+        )}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-[11px] font-bold uppercase text-white">
+          {email.slice(0, 1)}
+        </span>
+        <ChevronDown className={cn("hidden h-3 w-3 transition-transform sm:block", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 overflow-hidden rounded-2xl border border-green-100 bg-white shadow-[0_12px_40px_rgba(34,197,94,0.15)]"
+          style={{ animation: "fadeSlideUp 0.15s ease-out" }}
+        >
+          <div className="border-b border-green-50 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Signed in as</p>
+            <p className="truncate text-sm font-semibold text-gray-900" title={email}>
+              {email}
+            </p>
+          </div>
+          <Link
+            href="/profile"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
+          >
+            <UserCog className="h-4 w-4 shrink-0 text-green-500" />
+            Preferences
+          </Link>
+          <div className="h-px bg-green-50" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => signOut(false)}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4 shrink-0 text-green-500" />
+            Sign out
+          </button>
+          <div className="h-px bg-green-50" />
+          <button
+            type="button"
+            role="menuitem"
+            disabled={busy}
+            onClick={() => signOut(true)}
+            title="Also ends sessions on your other devices"
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
+          >
+            <ShieldOff className="h-4 w-4 shrink-0 text-green-500" />
+            Sign out everywhere
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TopNav() {
   const pathname = usePathname();
   const email = useIdentityStore((s) => s.email);
@@ -126,7 +284,9 @@ export function TopNav() {
     queryKey: ["applicationBoard", email],
     queryFn: () => getApplicationBoard(),
     enabled: !!email,
-    refetchInterval: liveUpdatesEnabled ? LIVE_POLL_INTERVAL_MS : false,
+    // Only poll while the tracker is actually on screen — the badge doesn't
+    // need 15s freshness on the map, and a global poll is wasted load.
+    refetchInterval: liveUpdatesEnabled && pathname === "/tracker" ? LIVE_POLL_INTERVAL_MS : false,
   });
 
   return (
@@ -152,7 +312,7 @@ export function TopNav() {
       </Link>
 
       <div className="flex items-center gap-1 ml-auto">
-        <NavLink href="/assistant" icon={Sparkles} label="AI Assistant" active={pathname === "/assistant"} />
+        <AiAssistantLink active={pathname === "/assistant"} />
 
         <NavLink
           href="/tracker"
@@ -178,6 +338,10 @@ export function TopNav() {
             aria-label="Toggle live tracker updates"
           />
         </div>
+
+        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
+
+        <AccountMenu />
       </div>
     </header>
   );

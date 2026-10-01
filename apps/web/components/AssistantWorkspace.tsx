@@ -2,12 +2,27 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 import { useIdentityStore } from "@/lib/identityStore";
-import { EmailGate } from "./EmailGate";
 import { ChatAssistant } from "./ChatAssistant";
 import { ChatHistorySidebar } from "./ChatHistorySidebar";
+
+/** Shown in the sidebar slot when signed out — chat itself works anonymously,
+ * only history and resume upload need an account. */
+function SignInPromo() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50">
+        <Sparkles className="h-5 w-5 text-green-600" />
+      </div>
+      <p className="text-[13px] font-semibold text-gray-800">Sign in to save your chats</p>
+      <p className="text-[12px] leading-relaxed text-gray-400">
+        You can chat right now — sign in to keep conversations across visits and attach a resume.
+      </p>
+    </div>
+  );
+}
 
 /**
  * Full-width chat with a conversation-history sidebar — the layout every
@@ -23,15 +38,6 @@ export function AssistantWorkspace() {
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  if (!email) {
-    return (
-      <EmailGate
-        title="AI Job Search Assistant"
-        subtitle="Sign in to chat and get resume feedback"
-      />
-    );
-  }
-
   return (
     <div className="relative flex min-h-0 w-full flex-1">
       <style jsx global>{`
@@ -45,17 +51,21 @@ export function AssistantWorkspace() {
         }
       `}</style>
 
-      {/* Desktop: always-visible sidebar */}
+      {/* Desktop: always-visible sidebar when signed in, sign-in nudge otherwise */}
       <div className="hidden h-full w-64 shrink-0 border-r border-gray-100 lg:block">
-        <ChatHistorySidebar
-          selectedId={conversationId}
-          onSelect={setConversationId}
-          onNew={() => setConversationId(null)}
-        />
+        {email ? (
+          <ChatHistorySidebar
+            selectedId={conversationId}
+            onSelect={setConversationId}
+            onNew={() => setConversationId(null)}
+          />
+        ) : (
+          <SignInPromo />
+        )}
       </div>
 
-      {/* Mobile: slide-in drawer */}
-      {mobileSidebarOpen && (
+      {/* Mobile: slide-in drawer (signed in only — nothing to list otherwise) */}
+      {mobileSidebarOpen && email && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div
             className="absolute inset-0 bg-black/30"

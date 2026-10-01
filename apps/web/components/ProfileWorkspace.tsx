@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CheckCircle2, Github, Linkedin, Code2, Loader2, User } from "lucide-react";
+import { Check, CheckCircle2, Github, Linkedin, Code2, Loader2, User, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { useIdentityStore } from "@/lib/identityStore";
 import { EmailGate } from "@/components/EmailGate";
-import { getPreferences, updatePreferences } from "@/lib/api";
+import { deleteAccount, exportAccount, getPreferences, updatePreferences } from "@/lib/api";
 
 const CITIES = [
   "Bengaluru", "Chennai", "Hyderabad", "Mumbai", "Pune", "Delhi NCR",
@@ -79,6 +79,100 @@ function LinkField({
 
 const selectCls =
   "flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
+
+/**
+ * Data-portability and account-deletion controls.
+ *
+ * Rendered under the preferences form, outside it (so these never act as an
+ * accidental submit). Deletion is a deliberate two-step — the first click arms
+ * it, the second commits — rather than a browser confirm() dialog.
+ */
+function AccountDataSection() {
+  const clearIdentity = useIdentityStore((s) => s.clearIdentity);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState<"export" | "delete" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setBusy("export");
+    setError(null);
+    try {
+      const data = await exportAccount();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "decoding-jobs-data.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Your data has been downloaded");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setBusy("delete");
+    setError(null);
+    try {
+      await deleteAccount();
+      clearIdentity();
+      toast.success("Your account and its data have been deleted");
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="mt-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
+      <h2 className="text-sm font-bold text-gray-900">Your data</h2>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">
+        Download everything this account holds, or permanently delete it. See our{" "}
+        <a href="/privacy" className="font-semibold text-green-600 hover:underline">Privacy Policy</a>{" "}
+        and{" "}
+        <a href="/terms" className="font-semibold text-green-600 hover:underline">Terms</a>.
+      </p>
+
+      {error && <p className="mt-2 text-[12.5px] text-red-500">{error}</p>}
+
+      <div className="mt-3.5 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={busy !== null}
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
+        >
+          {busy === "export" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Download my data
+        </button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          onBlur={() => setConfirming(false)}
+          disabled={busy !== null}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-bold transition-all disabled:opacity-50",
+            confirming
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "border border-red-200 text-red-600 hover:bg-red-50"
+          )}
+        >
+          {busy === "delete" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          {confirming ? "Confirm — delete permanently" : "Delete my account"}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 export function ProfileWorkspace() {
   const email = useIdentityStore((s) => s.email);
@@ -330,6 +424,8 @@ function ProfileForm({ email }: { email: string }) {
             )}
           </button>
         </form>
+
+        <AccountDataSection />
       </div>
     </main>
   );

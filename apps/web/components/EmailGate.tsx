@@ -100,7 +100,11 @@ export function EmailGate({
         </svg>
       </div>
       <div className="text-center">
-        <p className="text-sm font-semibold text-gray-900">{title}</p>
+        {/* A real heading, not a styled <p>. On every screen that gates with
+            this component the gate *is* the page, so without an h1 those
+            pages (tracker, preferences, candidate search) had no heading at
+            all — nothing to announce, nothing to navigate by. */}
+        <h1 className="text-sm font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 max-w-xs text-xs text-gray-400">{subtitle}</p>
       </div>
 

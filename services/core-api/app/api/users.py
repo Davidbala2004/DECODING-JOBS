@@ -12,13 +12,22 @@ import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.security import require_session
 from app.db.session import get_db
-from app.models.domain import SavedSearch, User
+from app.models.domain import (
+    Application,
+    ChatConversation,
+    EmailEvent,
+    MagicLinkToken,
+    Resume,
+    SavedSearch,
+    User,
+)
 from app.schemas import (
     GoogleAuthRequest,
     SavedSearchCreate,
@@ -234,4 +243,99 @@ async def delete_saved_search(
     if saved_search is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found.")
     await db.delete(saved_search)
+    await db.commit()
+
+
+@router.get(
+    "/me/export",
+    summary="Export everything this account holds (data portability)",
+)
+async def export_my_data(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
+) -> dict:
+    """Returns the signed-in user's own data as JSON.
+
+    A data-portability / "download my data" affordance to sit alongside
+    account deletion — required in spirit by India's DPDP Act and standard
+    practice anywhere personal data (here: resumes and forwarded email) is
+    held. Deliberately excludes other users' data and raw email bodies.
+    """
+    saved_searches = await db.execute(
+        select(SavedSearch).where(SavedSearch.user_id == current_user.id)
+    )
+    applications = await db.execute(
+        select(Application)
+        .options(selectinload(Application.job))
+        .where(Application.user_id == current_user.id)
+    )
+    resumes = await db.execute(select(Resume).where(Resume.user_id == current_user.id))
+    conversations = await db.execute(
+        select(ChatConversation).where(ChatConversation.user_id == current_user.id)
+    )
+
+    return {
+        "account": {
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "created_at": current_user.created_at.isoformat(),
+        },
+        "preferences": {
+            "target_roles": current_user.target_roles or [],
+            "preferred_cities": current_user.preferred_cities or [],
+            "preferred_work_mode": current_user.preferred_work_mode,
+            "min_salary": current_user.min_salary,
+            "skills": current_user.skills or [],
+            "experience_years": current_user.experience_years,
+            "notice_period": current_user.notice_period,
+            "github_url": current_user.github_url,
+            "linkedin_url": current_user.linkedin_url,
+            "leetcode_url": current_user.leetcode_url,
+            "profile_visible_to_recruiters": current_user.profile_visible_to_recruiters,
+        },
+        "saved_searches": [
+            {"label": s.label, "filters": s.filters, "email_alerts_enabled": s.email_alerts_enabled}
+            for s in saved_searches.scalars().all()
+        ],
+        "applications": [
+            {
+                "job_title": a.job.title if a.job else None,
+                "status": a.status.value,
+                "interview_round": a.interview_round,
+                "resume_filename": a.resume_filename,
+                "applied_at": a.applied_at.isoformat(),
+            }
+            for a in applications.scalars().all()
+        ],
+        "resumes": [
+            {"filename": r.filename, "ats_score": r.ats_score, "uploaded_at": r.uploaded_at.isoformat()}
+            for r in resumes.scalars().all()
+        ],
+        "chat_conversations": [
+            {"title": c.title, "created_at": c.created_at.isoformat()}
+            for c in conversations.scalars().all()
+        ],
+    }
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete this account and all of its data",
+)
+async def delete_my_account(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
+) -> None:
+    """Hard-deletes the account and everything tied to it.
+
+    Most children cascade via their FK (sessions, resumes, saved searches,
+    chat, candidate unlocks), but two don't and are cleared explicitly:
+    `applications.user_id` is ON DELETE SET NULL (they'd be orphaned, not
+    removed) and `magic_link_tokens` has no FK at all (keyed by email).
+    """
+    await db.execute(delete(EmailEvent).where(EmailEvent.user_id == current_user.id))
+    await db.execute(delete(Application).where(Application.user_id == current_user.id))
+    await db.execute(delete(MagicLinkToken).where(MagicLinkToken.email == current_user.email))
+    await db.delete(current_user)
     await db.commit()

@@ -9,9 +9,10 @@ from sqlalchemy.orm import selectinload
 
 from pydantic import BaseModel, ConfigDict
 
-from app.core.security import require_ingestion_key
+from app.core.ratelimit import RateLimit
+from app.core.security import require_ingestion_key, require_session
 from app.db.session import get_db
-from app.models.domain import Job, Company, EmploymentType, WorkMode
+from app.models.domain import Job, Company, EmploymentType, WorkMode, User
 from app.schemas import JobRead, JobWithCompanyRead
 from app.services.company_verification import verify_founder_domain
 from app.services.role_classifier import classify_department
@@ -64,18 +65,24 @@ async def search_jobs(
     result = await db.execute(stmt)
     rows = result.all()
 
+    # One grouped COUNT for every company in the result set, instead of a
+    # separate count query per company (an N+1 that grows with `limit`). Same
+    # pattern the map's companies/search already uses.
+    company_ids = {row.company_id for row in rows}
+    active_job_counts: dict[int, int] = {}
+    if company_ids:
+        counts_result = await db.execute(
+            select(Job.company_id, func.count(Job.id))
+            .where(Job.company_id.in_(company_ids), Job.is_active.is_(True))
+            .group_by(Job.company_id)
+        )
+        active_job_counts = {cid: total for cid, total in counts_result.all()}
+
     # Group by company
     company_map: dict[int, dict] = {}
     for row in rows:
         cid = row.company_id
         if cid not in company_map:
-            # Count total active jobs for this company
-            count_stmt = select(func.count(Job.id)).where(
-                Job.company_id == cid, Job.is_active.is_(True)
-            )
-            count_result = await db.execute(count_stmt)
-            total = count_result.scalar() or 0
-
             company_map[cid] = {
                 "company_id": cid,
                 "company_name": row.company_name,
@@ -86,7 +93,7 @@ async def search_jobs(
                 "longitude": float(row.longitude) if row.longitude else None,
                 "website_url": row.website_url,
                 "logo_url": row.logo_url,
-                "active_job_count": total,
+                "active_job_count": active_job_counts.get(cid, 0),
                 "matching_jobs": [],
             }
         company_map[cid]["matching_jobs"].append({
@@ -141,14 +148,20 @@ async def list_active_jobs(
     department: Annotated[
         str | None, Query(description="e.g. Engineering, Data & AI, HR & Recruiting")
     ] = None,
+    limit: Annotated[int, Query(ge=1, le=500, description="Max rows to return")] = 200,
+    offset: Annotated[int, Query(ge=0, description="Rows to skip, for paging")] = 0,
 ) -> list[Job]:
-    """Returns every job currently marked active, newest first."""
+    """Returns active jobs, newest first, paginated.
+
+    Bounded by default (200) so an unfiltered call can't pull an unbounded
+    table into memory as the ingestion pipeline grows.
+    """
     stmt = select(Job).where(Job.is_active.is_(True))
     if company_id is not None:
         stmt = stmt.where(Job.company_id == company_id)
     if department is not None:
         stmt = stmt.where(Job.department == department)
-    stmt = stmt.order_by(Job.created_at.desc())
+    stmt = stmt.order_by(Job.created_at.desc()).offset(offset).limit(limit)
 
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -269,10 +282,15 @@ async def seed_job(
 
 
 class JobRegisterRequest(BaseModel):
-    """A founder manually posting a role under their own (verified) company."""
+    """A founder manually posting a role under their own (verified) company.
+
+    No `founder_email` here — the verifying identity is the caller's session
+    (see register_job). Accepting an email from the body made this endpoint
+    spoofable: anyone could post a role under any listed company by typing an
+    address at that company's domain, without controlling the mailbox.
+    """
     model_config = ConfigDict(extra="forbid")
 
-    founder_email: str
     company_id: int
     title: str
     description: str
@@ -288,20 +306,24 @@ class JobRegisterRequest(BaseModel):
     "/register",
     response_model=JobRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Founder posts a role under their own company (verified by work-email domain)",
+    summary="Founder posts a role under their own company (verified by session email domain)",
+    dependencies=[Depends(RateLimit(limit=30, window_seconds=3600, scope="job-register"))],
 )
 async def register_job(
     payload: JobRegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Job:
-    """Re-verifies the founder's email against the target company's website
+    """Re-verifies the signed-in founder against the target company's website
     domain on every post — a verified company doesn't let just anyone add
-    roles to it, only whoever controls that domain."""
+    roles to it, only whoever controls that domain and has proven it by
+    signing in for that mailbox.
+    """
     company = await db.get(Company, payload.company_id)
     if company is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
-    error = verify_founder_domain(payload.founder_email, company.website_url)
+    error = verify_founder_domain(current_user.email, company.website_url)
     if error:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error)
 

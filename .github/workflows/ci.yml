@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The suite runs against a live core-api over real HTTP (see
+      # tests/conftest.py), so bring up the real stack the same way a developer
+      # does — PostGIS + core-api via the project's own docker-compose.
+      - name: Start the stack
+        working-directory: infra
+        run: docker compose up -d --build
+
+      - name: Wait for core-api + database to be ready
+        run: |
+          timeout 180 bash -c \
+            'until curl -sf http://localhost:8000/health/db >/dev/null 2>&1; do sleep 3; done'
+
+      - name: Run backend tests
+        run: docker exec -w /app decoding-jobs-core-api python -m pytest tests/ -v
+
+      - name: Dump core-api logs on failure
+        if: failure()
+        working-directory: infra
+        run: docker compose logs core-api
+
+      - name: Tear down
+        if: always()
+        working-directory: infra
+        run: docker compose down -v
+
+  frontend:
+    name: Frontend (typecheck, lint, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

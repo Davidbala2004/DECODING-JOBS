@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.models.domain import Job, Resume, User
 from app.schemas import ResumeAnalyzeRequest, ResumeRead
 from app.services.resume_analyzer import analyze_resume
-from app.services.resume_parser import SUPPORTED_CONTENT_TYPES, UnsupportedResumeFormat, extract_text
+from app.services.resume_parser import UnsupportedResumeFormat, extract_text, resolve_content_type
 
 logger = logging.getLogger("decoding_jobs.core_api.resumes")
 
@@ -33,7 +33,10 @@ async def upload_resume(
     current_user: Annotated[User, Depends(require_session)],
     file: Annotated[UploadFile, File()],
 ) -> Resume:
-    if file.content_type not in SUPPORTED_CONTENT_TYPES:
+    # Accept a valid declared type, or infer one from the filename when the
+    # browser reported nothing usable (empty / octet-stream for a real .docx).
+    resolved_content_type = resolve_content_type(file.content_type, file.filename)
+    if resolved_content_type is None:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Only PDF and DOCX resumes are supported",
@@ -47,7 +50,7 @@ async def upload_resume(
         )
 
     try:
-        extracted_text = extract_text(file_bytes, file.content_type)
+        extracted_text = extract_text(file_bytes, resolved_content_type)
     except UnsupportedResumeFormat as exc:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
     except Exception:
@@ -57,7 +60,7 @@ async def upload_resume(
     resume = Resume(
         user_id=current_user.id,
         filename=file.filename or "resume",
-        content_type=file.content_type,
+        content_type=resolved_content_type,
         file_bytes=file_bytes,
         extracted_text=extracted_text,
     )

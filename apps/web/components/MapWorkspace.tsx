@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { SavedSearchesButton } from "@/components/SavedSearchesButton";
 import { useIdentityStore } from "@/lib/identityStore";
+import { jobSourceLabel } from "@/lib/jobSources";
 import type { SavedSearchFilters } from "@/lib/api";
 import {
   searchCompaniesInBoundingBox,
@@ -83,7 +84,7 @@ function resolveLogoUrl(company: Pick<Company, "website_url" | "logo_url">): str
     ? (() => {
         try { return new URL(company.website_url).hostname; }
         catch {
-          const url = company.website_url.replace(/^[/]+/, "").split(/[/s?#]/)[0];
+          const url = company.website_url.replace(/^[/]+/, "").split(/[/\s?#]/)[0];
           return url && url.includes(".") ? url : null;
         }
       })()
@@ -141,6 +142,37 @@ function getCityCenter(city: string): CityConfig {
 const MAP_STYLE_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Accessible marker — MapLibre stamps `aria-label="Map marker"` and
+// `role="button"` onto every marker element unless one is already set (see
+// Marker.addTo in maplibre-gl). Left alone, all 500 pins announce themselves
+// identically as "Map marker", so the map is unusable with a screen reader.
+// react-map-gl's Marker exposes no aria-label prop, so we overwrite the label
+// on MapLibre's own element through its public getElement() after mount.
+// ---------------------------------------------------------------------------
+
+type AccessibleMarkerProps = React.ComponentProps<typeof Marker> & {
+  /** What a screen reader reads out for this pin. */
+  label: string;
+};
+
+function AccessibleMarker({ label, children, ...markerProps }: AccessibleMarkerProps) {
+  const markerRef = useRef<React.ComponentRef<typeof Marker> | null>(null);
+
+  useEffect(() => {
+    const element = markerRef.current?.getElement();
+    // setAttribute always wins, so this replaces MapLibre's default rather
+    // than racing it regardless of whether addTo() has run yet.
+    if (element) element.setAttribute("aria-label", label);
+  }, [label]);
+
+  return (
+    <Marker ref={markerRef} {...markerProps}>
+      {children}
+    </Marker>
+  );
+}
+
 // Company Pin — the fancy avatar with logo, hiring glow, and rich tooltip
 // ---------------------------------------------------------------------------
 
@@ -688,6 +720,12 @@ export function MapWorkspace() {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // Set when a result is picked, so the results panel gets out of the way of
+  // the map the user just navigated to. Cleared on the next keystroke.
+  const [searchDismissed, setSearchDismissed] = useState(false);
+  // Collapsed by default — a permanent legend box would compete with the map,
+  // but there has to be somewhere a first-timer can learn what a pin means.
+  const [legendOpen, setLegendOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
@@ -795,7 +833,7 @@ export function MapWorkspace() {
     setSelectedArea(null);
   }, [selectedCity]);
 
-  const { data: companies, isLoading, isError, refetch: refetchCompanies } = useQuery({
+  const { data: companiesResult, isLoading, isError, refetch: refetchCompanies } = useQuery({
     queryKey: ["companies", "search", bbox, selectedSector, selectedCity, hiringOnly, selectedStage, selectedArea, selectedType, selectedDepartment],
     queryFn: () =>
       searchCompaniesInBoundingBox(bbox as BoundingBox, {
@@ -810,6 +848,11 @@ export function MapWorkspace() {
     enabled: bbox !== null,
     placeholderData: keepPreviousData,
   });
+
+  const companies = companiesResult?.companies;
+  // The server truncated this viewport at its per-view ceiling — the count
+  // below is a floor, not the total, and the user needs to be told that.
+  const companiesCapped = companiesResult?.capped ?? false;
 
   // Job search query
   const { data: jobSearchResults } = useQuery({
@@ -830,6 +873,7 @@ export function MapWorkspace() {
   const handleSearchInput = (val: string) => {
     setSearchValue(val);
     setShowSuggestions(val.length >= 2);
+    setSearchDismissed(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.length >= 2) {
       debounceRef.current = setTimeout(() => setSearchQuery(val), 400);
@@ -848,7 +892,20 @@ export function MapWorkspace() {
     setSearchValue("");
     setSearchQuery("");
     setShowSuggestions(false);
+    setSearchDismissed(false);
   };
+
+  // True while the box holds text the debounce hasn't searched yet.
+  //
+  // This is what keeps the two panels from stacking: the suggestion list and
+  // the results list used to render together whenever a debounced query landed
+  // while the user was still typing a refinement, both absolutely positioned
+  // at the same anchor and painting over each other. Now exactly one of them
+  // can be open — suggestions while you're still editing, results once the
+  // search has actually run.
+  const searchIsBeingEdited = searchValue.trim() !== searchQuery;
+  const showSuggestionPanel = showSuggestions && searchIsBeingEdited;
+  const showResultsPanel = !!searchQuery && !searchIsBeingEdited && !searchDismissed;
 
   // Close suggestions on outside click
   useEffect(() => {
@@ -1049,8 +1106,9 @@ export function MapWorkspace() {
         {showCityPins && allCities?.map((cityInfo) => {
           const center = getCityCenter(cityInfo.city);
           return (
-            <Marker
+            <AccessibleMarker
               key={`city-${cityInfo.city}`}
+              label={`${cityInfo.city}: ${cityInfo.count} companies, ${cityInfo.hiring_count} hiring. Zoom in to see them.`}
               longitude={center.longitude}
               latitude={center.latitude}
               anchor="center"
@@ -1072,7 +1130,7 @@ export function MapWorkspace() {
                 onHover={() => setHoveredCity(cityInfo.city)}
                 onLeave={() => setHoveredCity(null)}
               />
-            </Marker>
+            </AccessibleMarker>
           );
         })}
 
@@ -1087,21 +1145,34 @@ export function MapWorkspace() {
             const clusterFeature = feature as ClusterFeature<{ hiringCount: number }>;
             const clusterId = clusterFeature.properties.cluster_id;
             return (
-              <Marker key={`cluster-${clusterId}`} longitude={longitude} latitude={latitude} anchor="bottom">
+              <AccessibleMarker
+                key={`cluster-${clusterId}`}
+                label={`${clusterFeature.properties.point_count} companies clustered here, ${clusterFeature.properties.hiringCount} hiring. Activate to list them.`}
+                longitude={longitude}
+                latitude={latitude}
+                anchor="bottom"
+              >
                 <ClusterPin
                   count={clusterFeature.properties.point_count}
                   hiringCount={clusterFeature.properties.hiringCount}
                   onClick={() => setOpenClusterId(clusterId)}
                 />
-              </Marker>
+              </AccessibleMarker>
             );
           }
 
           const company = companiesById.get((feature.properties as CompanyClusterProps).companyId);
           if (!company) return null;
           return (
-            <Marker
+            <AccessibleMarker
               key={company.id}
+              label={
+                `${company.name} \u2014 ${company.sector ?? "Other"}` +
+                `${company.area ? `, ${company.area}` : ""}, ${company.city}. ` +
+                (company.active_job_count > 0
+                  ? `${company.active_job_count} open ${company.active_job_count === 1 ? "role" : "roles"}`
+                  : "Not hiring right now")
+              }
               longitude={company.longitude}
               latitude={company.latitude}
               anchor="bottom"
@@ -1119,7 +1190,7 @@ export function MapWorkspace() {
                 onHover={() => setHoveredId(company.id)}
                 onLeave={() => setHoveredId(null)}
               />
-            </Marker>
+            </AccessibleMarker>
           );
         })}
 
@@ -1219,8 +1290,9 @@ export function MapWorkspace() {
             </button>
           )}
 
-          {/* Autocomplete dropdown */}
-          {showSuggestions && suggestions && suggestions.length > 0 && (
+          {/* Autocomplete dropdown — only while the query is still being
+              edited. See showSuggestionPanel / showResultsPanel above. */}
+          {showSuggestionPanel && suggestions && suggestions.length > 0 && (
             <div
               className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
@@ -1242,14 +1314,28 @@ export function MapWorkspace() {
           )}
 
           {/* Job search results dropdown */}
-          {searchQuery && jobSearchResults && jobSearchResults.length > 0 && (
+          {showResultsPanel && jobSearchResults && jobSearchResults.length > 0 && (
             <div
               className="scroll-thin absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               <div className="sticky top-0 flex items-center gap-1.5 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[11.5px] font-bold uppercase tracking-wider text-green-700">{jobSearchResults.length} companies hiring</span>
+                {/* Names the scope. The toolbar chip counts pins in the current
+                    viewport while this counts the whole city, so the two
+                    numbers legitimately differ — saying which is which stops
+                    them reading as a contradiction. */}
+                <span className="text-[11.5px] font-bold uppercase tracking-wider text-green-700">
+                  {jobSearchResults.length} companies hiring in {selectedCity}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Close search results"
+                  onClick={() => setSearchDismissed(true)}
+                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-green-700/60 transition-colors hover:bg-white hover:text-green-800"
+                >
+                  <X className="h-3 w-3" aria-hidden="true" />
+                </button>
               </div>
               {jobSearchResults.map((r) => (
                 <button
@@ -1260,6 +1346,9 @@ export function MapWorkspace() {
                       mapRef.current?.flyTo({ center: [r.longitude, r.latitude], zoom: 13, duration: 600 });
                     }
                     setShowSuggestions(false);
+                    // Get out of the way — the user asked to see this company
+                    // on the map, not a list covering a third of it.
+                    setSearchDismissed(true);
                   }}
                   className="flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors hover:bg-green-50/70 border-b border-gray-50 last:border-0"
                 >
@@ -1280,7 +1369,7 @@ export function MapWorkspace() {
                       {r.matching_jobs.slice(0, 3).map((j) => (
                         <span key={j.id} className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
                           {j.title}
-                          {j.source && <span className="text-[7px] text-green-500">via {j.source}</span>}
+                          {j.source && <span className="text-[7px] text-green-500">via {jobSourceLabel(j.source)}</span>}
                         </span>
                       ))}
                       {r.matching_jobs.length > 3 && (
@@ -1296,7 +1385,7 @@ export function MapWorkspace() {
             </div>
           )}
 
-          {searchQuery && jobSearchResults && jobSearchResults.length === 0 && (
+          {showResultsPanel && jobSearchResults && jobSearchResults.length === 0 && (
             <div
               className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
@@ -1475,7 +1564,42 @@ export function MapWorkspace() {
               </span>
             )}
             <Building2 className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-gray-700">{totalCount} compan{totalCount !== 1 ? 'ies' : 'y'}</span>
+            {/* A capped view shows "500+" and asks for a zoom. Without the
+                marker the number reads as the true total and a user has no
+                way to know they're seeing a clipped slice of the map. */}
+            {/* "in this view" is doing real work: this counts pins inside the
+                current viewport, which is a different (usually smaller) set
+                than the city-wide count in the search results panel.
+
+                The capped branch says "N of 500+" rather than "N+": the server
+                caps the *raw viewport* fetch, and totalCount is what survives
+                the client-side filters. Writing "11+" when 11 is an exact
+                filtered count would invent uncertainty that isn't there, and
+                writing "11 in view" would hide that the underlying set is
+                truncated. Both numbers, clearly labelled, is the honest
+                version. */}
+            <span
+              className="text-gray-700"
+              title={
+                companiesCapped
+                  ? "This view holds more companies than we load at once. Zoom in for the rest."
+                  : undefined
+              }
+            >
+              {companiesCapped
+                ? `${totalCount} of 500+ companies`
+                : `${totalCount} compan${totalCount !== 1 ? 'ies' : 'y'} in view`}
+            </span>
+            {companiesCapped && (
+              <button
+                type="button"
+                onClick={() => mapRef.current?.zoomIn({ duration: 300 })}
+                className="flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-100"
+              >
+                <Plus className="h-3 w-3" aria-hidden="true" />
+                zoom in for more
+              </button>
+            )}
             {hiringCount > 0 && (
               <>
                 <span className="text-gray-200">|</span>
@@ -1493,29 +1617,117 @@ export function MapWorkspace() {
       {viewMode === "map" && (
       <div className="absolute right-4 top-4 flex flex-col overflow-hidden rounded-xl bg-white shadow-lg">
         <button
+          type="button"
+          // Icon-only buttons need an explicit name — the SVG alone leaves
+          // assistive tech announcing three indistinguishable "button"s.
+          aria-label="Zoom in"
+          title="Zoom in"
           className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
           onClick={() => mapRef.current?.zoomIn({ duration: 200 })}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
         </button>
         <div className="mx-2.5 h-px bg-gray-100" />
         <button
+          type="button"
+          aria-label="Zoom out"
+          title="Zoom out"
           className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
           onClick={() => mapRef.current?.zoomOut({ duration: 200 })}
         >
-          <Minus className="h-4 w-4" />
+          <Minus className="h-4 w-4" aria-hidden="true" />
         </button>
         <div className="mx-2.5 h-px bg-gray-100" />
         <button
+          type="button"
+          aria-label={`Centre the map on ${selectedCity}`}
+          title={`Centre the map on ${selectedCity}`}
           className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
           onClick={() => {
             const c = getCityCenter(selectedCity);
             mapRef.current?.flyTo({ center: [c.longitude, c.latitude], zoom: c.zoom, duration: 600 });
           }}
         >
-          <Compass className="h-4 w-4" />
+          <Compass className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
+      )}
+
+      {/* ── Legend (map view only) ──
+          Nothing else on screen explains what the pins mean: the difference
+          between a hiring and a non-hiring company is a glow, a size change
+          and an opacity change, none of which is self-evident, and the
+          "Not hiring right now" copy only exists inside a hover tooltip that
+          touch users never see. */}
+      {viewMode === "map" && (
+        <div className="absolute bottom-8 left-4 z-20 flex flex-col items-start gap-2">
+          {legendOpen && (
+            <div
+              className="w-60 rounded-2xl border border-gray-100 bg-white/95 p-3.5 text-[11.5px] shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm"
+              style={{ animation: "fadeSlideUp 0.15s ease-out" }}
+            >
+              <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                What the pins mean
+              </p>
+              <ul className="flex flex-col gap-2 text-gray-600">
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-[8px] font-bold text-white">
+                    A
+                  </span>
+                  <span>
+                    <b className="text-gray-800">Hiring now</b> — full size, green
+                    glow, gently pulsing
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-300 text-[8px] font-bold text-white">
+                    A
+                  </span>
+                  <span>
+                    <b className="text-gray-800">Not hiring</b> — smaller and
+                    faded, but still clickable
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0 rounded bg-emerald-500 px-1 py-0.5 text-[7px] font-bold text-white">
+                    NEW
+                  </span>
+                  <span>
+                    Posted a role in the <b className="text-gray-800">last 3 days</b>
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-100 text-[8px] font-bold text-green-700">
+                    12
+                  </span>
+                  <span>
+                    <b className="text-gray-800">Cluster</b> — that many
+                    companies close together. Click to list them
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-[8px] text-white">
+                    <MapPin className="h-2.5 w-2.5" aria-hidden="true" />
+                  </span>
+                  <span>
+                    <b className="text-gray-800">City pin</b> — zoomed out. Click
+                    to fly in
+                  </span>
+                </li>
+              </ul>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setLegendOpen((v) => !v)}
+            aria-expanded={legendOpen}
+            aria-label={legendOpen ? "Hide map legend" : "Show map legend"}
+            className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-[11.5px] font-semibold text-gray-600 shadow-lg transition-colors hover:text-green-700"
+          >
+            <Layers className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+            {legendOpen ? "Hide legend" : "Legend"}
+          </button>
+        </div>
       )}
 
       {/* ── Filter panel ── */}

@@ -28,6 +28,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useMapSelectionStore } from "@/lib/store";
 import { useIdentityStore } from "@/lib/identityStore";
+// Source-pill styling lives in lib/jobSources.ts so this panel and the map's
+// inline badge can never show different names for the same source value.
+import { JOB_SOURCE_BADGES as SOURCE_BADGES } from "@/lib/jobSources";
 import {
   getCompanyById,
   getJobsByCompany,
@@ -62,17 +65,6 @@ function formatSalaryRange(job: Job): string {
   }
   return "";
 }
-
-const SOURCE_BADGES: Record<string, { label: string; cls: string }> = {
-  linkedin: { label: 'LinkedIn', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600' },
-  indeed: { label: 'Indeed', cls: 'rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700' },
-  glassdoor: { label: 'Glassdoor', cls: 'rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700' },
-  naukri: { label: 'Naukri', cls: 'rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600' },
-  internshala: { label: 'Internshala', cls: 'rounded-md bg-yellow-50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-700' },
-  foundit: { label: 'Foundit', cls: 'rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600' },
-  wellfound: { label: 'Wellfound', cls: 'rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-600' },
-  careers: { label: 'Careers', cls: 'rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600' },
-};
 
 function EmptyState() {
   return (
@@ -353,7 +345,7 @@ export function CompanySidePanel() {
     ? (() => {
         try { return new URL(company.website_url).hostname.replace("www.", ""); }
         catch {
-          const url = company.website_url.replace(/^[/]+/, '').split(/[/s?#]/)[0];
+          const url = company.website_url.replace(/^[/]+/, '').split(/[/\s?#]/)[0];
           return url && url.includes('.') ? url.replace("www.", "") : null;
         }
       })()
@@ -629,9 +621,30 @@ export function CompanySidePanel() {
 
           {/* Submit */}
           {hasApplied ? (
-            <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-[12.5px] font-bold text-white shadow-md shadow-green-500/20">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Applied
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-[12.5px] font-bold text-white shadow-md shadow-green-500/20">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Applied
+              </div>
+              {/* A guest application is real but belongs to no account, so it
+                  never appears on the tracker. Saying so here — at the moment
+                  it succeeded — is the only chance to convert it; otherwise
+                  the user applies, finds an empty board later, and has no idea
+                  why. */}
+              {!email && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-800">
+                  <p className="font-semibold">This application isn&apos;t saved to an account</p>
+                  <p className="mt-0.5 text-amber-700">
+                    Sign in to track it, and every later application, on your board.
+                  </p>
+                  <Link
+                    href="/tracker"
+                    className="mt-1.5 inline-flex items-center gap-1 font-bold text-amber-900 underline underline-offset-2"
+                  >
+                    Sign in to save it
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <button

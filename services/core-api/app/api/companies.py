@@ -3,14 +3,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import require_ingestion_key
+from app.core.ratelimit import RateLimit
+from app.core.security import require_ingestion_key, require_session
 from app.db.session import get_db
-from app.models.domain import Company, Job
+from app.models.domain import Company, Job, User
 from app.schemas import CompanyRead
 from app.services.company_verification import verify_founder_domain
 from app.services.geo import city_center_with_jitter
@@ -20,6 +21,29 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 # How fresh a job posting has to be for its company's pin to flash "hiring now".
 RECENT_HIRING_DAYS = 3
 
+# Hard ceiling on companies returned for one viewport query. Without this a
+# world-spanning bounding box (or a script) returns the entire table and every
+# pin becomes a live DOM node on the client. A capped view is a "zoom in for
+# detail" situation, matching what the client-side clusterer already implies.
+MAX_COMPANIES_PER_VIEW = 500
+
+# Names that only ever come from local test seeding. These were showing up in
+# real Bengaluru job searches ("Partner Engineering Test Company — Tester for
+# AC activation"), which undermines trust in the whole dataset.
+#
+# Deliberately an explicit denylist and NOT a `%test%` pattern: TestVagrant,
+# Zentest Software and Moolya Software Testing are real companies, and hiding
+# legitimate employers to catch three junk rows would be the worse bug.
+PLACEHOLDER_COMPANY_NAMES = {
+    "test",
+    "test company",
+    "testcompany",
+    "test hiring",
+    "testhiring",
+    "partner engineering test company",
+    "tester",
+}
+
 
 @router.get(
     "/search",
@@ -27,6 +51,7 @@ RECENT_HIRING_DAYS = 3
     summary="Find companies whose pin falls inside a map viewport",
 )
 async def search_companies(
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
     min_lat: float = Query(..., ge=-90, le=90, description="Southwest corner latitude"),
     min_lng: float = Query(..., ge=-180, le=180, description="Southwest corner longitude"),
@@ -44,6 +69,10 @@ async def search_companies(
 
     Supports optional filters for sector, city, and hiring status.
     Powers the map's viewport-driven pin loading.
+
+    A view that hits MAX_COMPANIES_PER_VIEW is truncated and flagged with an
+    `X-Result-Capped: true` response header, so the client can say "500+" and
+    prompt a zoom instead of presenting a clipped list as if it were complete.
     """
     if min_lat >= max_lat:
         raise HTTPException(status_code=422, detail="min_lat must be less than max_lat")
@@ -52,6 +81,11 @@ async def search_companies(
 
     envelope = func.ST_MakeEnvelope(min_lng, min_lat, max_lng, max_lat, 4326)
     stmt = select(Company).where(func.ST_Within(Company.location, envelope))
+
+    # Keep seeded test rows out of every user-facing list. See
+    # PLACEHOLDER_COMPANY_NAMES — the real fix is to stop creating them, but
+    # this guarantees they can't reach a job seeker in the meantime.
+    stmt = stmt.where(func.lower(Company.name).notin_(PLACEHOLDER_COMPANY_NAMES))
 
     # Apply optional filters.
     if sector:
@@ -88,8 +122,14 @@ async def search_companies(
         elif company_type == 'Other':
             stmt = stmt.where(Company.stage.notin_(['Seed', 'Early Stage', 'Series A', 'Series B', 'Growth', 'Public']))
 
-    result = await db.execute(stmt)
+    # Ask for one more than we're willing to return: if that extra row comes
+    # back we know the view was truncated, which a bare `limit(MAX)` can't
+    # tell us (exactly 500 real rows and 500-of-many look identical).
+    result = await db.execute(stmt.limit(MAX_COMPANIES_PER_VIEW + 1))
     companies = list(result.scalars().all())
+    if len(companies) > MAX_COMPANIES_PER_VIEW:
+        companies = companies[:MAX_COMPANIES_PER_VIEW]
+        response.headers["X-Result-Capped"] = "true"
 
     # Annotate each company with its active job count + "hiring freshness"
     # (job posted in the last 3 days gets a flash on the pin) — one grouped
@@ -306,6 +346,17 @@ async def seed_company(
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Point
 
+    # Refuse obvious test fixtures at the door, so they can't be re-seeded into
+    # a dataset that real job seekers browse. See PLACEHOLDER_COMPANY_NAMES.
+    if payload.name.strip().lower() in PLACEHOLDER_COMPANY_NAMES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"'{payload.name}' looks like a test fixture, not a company. "
+                "Seeding it would surface it in real search results."
+            ),
+        )
+
     # Check if company already exists.
     existing = await db.execute(
         select(Company).where(Company.name == payload.name)
@@ -360,9 +411,13 @@ async def seed_company(
 
 
 class CompanyRegisterRequest(BaseModel):
-    """A founder listing their own startup on the map."""
+    """A founder listing their own startup on the map.
 
-    founder_email: str
+    The verifying identity is the caller's session (see register_company) —
+    there is no client-supplied `founder_email` anymore, which is what made
+    the old domain check spoofable by anyone who could type an address.
+    """
+
     name: str
     website_url: str
     description: str | None = None
@@ -384,19 +439,28 @@ class CompanyRegisterRequest(BaseModel):
     "/register",
     response_model=CompanyRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Founder self-registers their startup (verified by work-email domain)",
+    summary="Founder self-registers their startup (verified by session email domain)",
+    dependencies=[Depends(RateLimit(limit=10, window_seconds=3600, scope="company-register"))],
 )
 async def register_company(
     payload: CompanyRegisterRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_session)],
 ) -> Company:
-    """Publishes immediately if the founder's email domain matches their
-    company's website — no admin queue. Rejects free-email addresses and
-    domain mismatches outright (see app.services.company_verification)."""
+    """Publishes immediately if the founder's *session-verified* email domain
+    matches their company's website — no admin queue. Rejects free-email
+    addresses and domain mismatches outright (see
+    app.services.company_verification).
+
+    Identity comes from the session, not the request body: the caller had to
+    click a magic link or sign in with Google for that mailbox first, so the
+    domain match proves they actually control the domain rather than just
+    knowing how to spell it.
+    """
     from geoalchemy2.shape import from_shape
     from shapely.geometry import Point
 
-    error = verify_founder_domain(payload.founder_email, payload.website_url)
+    error = verify_founder_domain(current_user.email, payload.website_url)
     if error:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=error)
 
@@ -436,7 +500,7 @@ async def register_company(
         linkedin_url=payload.linkedin_url,
         website_url=payload.website_url,
         status="active",
-        submitted_by_email=payload.founder_email,
+        submitted_by_email=current_user.email,
     )
     db.add(company)
     await db.commit()

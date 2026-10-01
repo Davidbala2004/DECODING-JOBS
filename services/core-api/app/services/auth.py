@@ -98,6 +98,34 @@ async def create_session(db: AsyncSession, user: User) -> str:
     return raw_token
 
 
+async def revoke_session(db: AsyncSession, raw_token: str) -> bool:
+    """Deletes the session row behind this raw token. Returns True if a
+    session was actually revoked.
+
+    Sign-out must be server-side, not just "forget the token in the browser":
+    a bearer token that stays valid after the user leaves is a live credential
+    anyone who captured it can keep using.
+    """
+    result = await db.execute(select(Session).where(Session.token_hash == _hash_token(raw_token)))
+    session = result.scalar_one_or_none()
+    if session is None:
+        return False
+    await db.delete(session)
+    await db.commit()
+    return True
+
+
+async def revoke_all_sessions(db: AsyncSession, user_id: int) -> int:
+    """Deletes every session for this user — "sign out everywhere", for the
+    shared-laptop / lost-device case. Returns how many were revoked."""
+    result = await db.execute(select(Session).where(Session.user_id == user_id))
+    sessions = result.scalars().all()
+    for session in sessions:
+        await db.delete(session)
+    await db.commit()
+    return len(sessions)
+
+
 async def get_user_from_session(db: AsyncSession, raw_token: str) -> User | None:
     result = await db.execute(
         select(Session).where(Session.token_hash == _hash_token(raw_token))

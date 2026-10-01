@@ -167,13 +167,21 @@ async function patchJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 /** Matches GET /api/v1/companies/search on services/core-api. */
+export interface CompanySearchResult {
+  companies: Company[];
+  /** Set when the server truncated the viewport at its per-view ceiling.
+   * Lets the UI say "500+" and ask for a zoom instead of presenting a clipped
+   * list as though it were the whole population. */
+  capped: boolean;
+}
+
 export async function searchCompaniesInBoundingBox(
   bbox: BoundingBox,
   filters?: {
     sector?: string; city?: string; hiring_only?: boolean; stage?: string;
     area?: string; company_type?: string; department?: string;
   }
-): Promise<Company[]> {
+): Promise<CompanySearchResult> {
   const params = new URLSearchParams({
     min_lat: bbox.minLat.toString(),
     min_lng: bbox.minLng.toString(),
@@ -189,7 +197,22 @@ export async function searchCompaniesInBoundingBox(
   if (filters?.company_type) params.set("company_type", filters.company_type);
   if (filters?.department) params.set("department", filters.department);
 
-  return fetchJson<Company[]>(`/api/v1/companies/search?${params.toString()}`);
+  // Hand-rolled rather than fetchJson so the response headers survive — the
+  // truncation flag rides in `X-Result-Capped` (exposed via CORS in main.py).
+  const response = await fetch(`${API_BASE_URL}/api/v1/companies/search?${params.toString()}`, {
+    headers: authHeader(),
+  });
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    const body = await response.json().catch(() => null);
+    throw new Error(
+      apiErrorMessage(body, `Couldn't load companies (${response.status})`)
+    );
+  }
+  return {
+    companies: (await response.json()) as Company[],
+    capped: response.headers.get("X-Result-Capped") === "true",
+  };
 }
 
 /** Matches GET /api/v1/jobs/departments on services/core-api. */
@@ -343,6 +366,36 @@ export async function googleAuth(credential: string): Promise<SessionResult> {
   return response.json() as Promise<SessionResult>;
 }
 
+/** Matches POST /api/v1/auth/logout — revokes the current session server-side
+ * so the token can't be replayed after sign-out.
+ *
+ * Best-effort by design: the caller clears local identity even if this throws,
+ * because a user who asked to sign out must end up signed out either way.
+ * `keepalive` lets it survive an immediate navigation/close. */
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+    method: "POST",
+    headers: authHeader(),
+    keepalive: true,
+  });
+  if (!response.ok && response.status !== 401) {
+    throw new Error(`Sign-out failed (${response.status})`);
+  }
+}
+
+/** Matches POST /api/v1/auth/logout-all — revokes every session on the account,
+ * including this one. For the shared-laptop / lost-device case. */
+export async function logoutAllSessions(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout-all`, {
+    method: "POST",
+    headers: authHeader(),
+    keepalive: true,
+  });
+  if (!response.ok && response.status !== 401) {
+    throw new Error(`Sign-out everywhere failed (${response.status})`);
+  }
+}
+
 export interface UserPreferences {
   full_name: string | null;
   target_roles: string[];
@@ -405,6 +458,24 @@ export async function updatePreferences(params: {
     throw new Error(apiErrorMessage(body, `Saving preferences failed (${response.status})`));
   }
   return response.json() as Promise<UserPreferences>;
+}
+
+/** Matches GET /api/v1/users/me/export — download everything this account holds. */
+export async function exportAccount(): Promise<Record<string, unknown>> {
+  return fetchJson<Record<string, unknown>>(`/api/v1/users/me/export`);
+}
+
+/** Matches DELETE /api/v1/users/me — permanently delete the account and its data. */
+export async function deleteAccount(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+    method: "DELETE",
+    headers: authHeader(),
+  });
+  if (!response.ok) {
+    handleUnauthorized(response.status);
+    const body = await response.json().catch(() => null);
+    throw new Error(apiErrorMessage(body, `Account deletion failed (${response.status})`));
+  }
 }
 
 export interface SavedSearchFilters {
@@ -643,7 +714,6 @@ export async function appendChatMessage(params: {
 }
 
 export interface CompanyRegisterParams {
-  founderEmail: string;
   name: string;
   websiteUrl: string;
   description?: string;
@@ -659,13 +729,14 @@ export interface CompanyRegisterParams {
   linkedinUrl?: string;
 }
 
-/** Matches POST /api/v1/companies/register on services/core-api. */
+/** Matches POST /api/v1/companies/register on services/core-api.
+ * The verifying identity is the caller's session (attached via authHeader),
+ * not a client-supplied email — the backend derives it from the session. */
 export async function registerCompany(params: CompanyRegisterParams): Promise<Company> {
   const response = await fetch(`${API_BASE_URL}/api/v1/companies/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify({
-      founder_email: params.founderEmail,
       name: params.name,
       website_url: params.websiteUrl,
       description: params.description || null,
@@ -689,7 +760,6 @@ export async function registerCompany(params: CompanyRegisterParams): Promise<Co
 }
 
 export interface JobRegisterParams {
-  founderEmail: string;
   companyId: number;
   title: string;
   description: string;
@@ -700,13 +770,13 @@ export interface JobRegisterParams {
   applyUrl?: string;
 }
 
-/** Matches POST /api/v1/jobs/register on services/core-api. */
+/** Matches POST /api/v1/jobs/register on services/core-api.
+ * Identity comes from the session (authHeader), not the request body. */
 export async function registerJob(params: JobRegisterParams): Promise<Job> {
   const response = await fetch(`${API_BASE_URL}/api/v1/jobs/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify({
-      founder_email: params.founderEmail,
       company_id: params.companyId,
       title: params.title,
       description: params.description,

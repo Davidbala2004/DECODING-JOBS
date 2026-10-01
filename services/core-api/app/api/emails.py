@@ -16,14 +16,14 @@ import secrets
 from email.utils import parseaddr
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.users import get_or_create_user
 from app.core.config import get_settings
+from app.core.security import require_session
 from app.db.session import get_db
 from app.models.domain import Application, ApplicationStatus, EmailEvent, Job, User
 from app.schemas import EmailEventRead
@@ -193,18 +193,22 @@ async def receive_inbound_email(
 @router.get(
     "/unmatched",
     response_model=list[EmailEventRead],
-    summary="List a user's forwarded emails the parser couldn't attach to an application",
+    summary="List the signed-in user's forwarded emails the parser couldn't attach",
 )
 async def list_unmatched(
     db: Annotated[AsyncSession, Depends(get_db)],
-    email: str = Query(..., min_length=3),
+    current_user: Annotated[User, Depends(require_session)],
 ) -> list[EmailEvent]:
-    user = await get_or_create_user(db, email)
-    await db.commit()
+    """Identity comes from the session, not a query-string email.
 
+    Previously this took `email` as a query parameter and looked the user up
+    by it — so anyone could pass someone else's address and read their
+    forwarded interview emails (subjects, senders, raw bodies). It also
+    created a user row on a GET as a side effect. Both are gone.
+    """
     result = await db.execute(
         select(EmailEvent)
-        .where(EmailEvent.user_id == user.id, EmailEvent.matched.is_(False))
+        .where(EmailEvent.user_id == current_user.id, EmailEvent.matched.is_(False))
         .order_by(EmailEvent.created_at.desc())
     )
     return list(result.scalars().all())
