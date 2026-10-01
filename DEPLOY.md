@@ -155,7 +155,27 @@ step 6 for how to stop that happening to your testers.
 
 ## Step 4 — Deploy the frontend on Vercel
 
-1. [vercel.com/new](https://vercel.com/new) → import the same GitHub repo.
+> **Set the production branch BEFORE you deploy — this bites everyone once.**
+>
+> Vercel's import flow never asks which branch to use. It takes your repository's
+> **default branch, which is `main`**, and this repo's `main` is badly stale: it
+> lacks the design polish (`aa1e05f`) and the map fixes (`65f8286`), while
+> carrying one merge commit the good branch doesn't have. Worse, that old code
+> still contains four `react/no-unescaped-entities` errors, so the very first
+> build **fails** with `Command "npm run build" exited with 1` — which looks like
+> a broken project rather than a wrong branch.
+>
+> Fix it before importing, or immediately after:
+> **Settings → Environments → Production → Branch Tracking** → enter
+> **`feat/updated-decode`** → **Save**.
+>
+> That setting only governs *future* pushes, and it does not redeploy on its own.
+> You need one push to that branch to get a production deployment out of it.
+
+1. [vercel.com/new](https://vercel.com/new) → import the same GitHub repo. If no
+   repositories are listed, Vercel's GitHub App isn't installed yet — click
+   **Install**, pick the account that owns the repo, choose **Only select
+   repositories** and select just this one.
 2. **Root Directory: `apps/web`** ← the one setting people miss. This repo has no
    root `package.json`, so deploying from the repo root fails.
 3. Framework preset auto-detects as Next.js. Leave the build settings alone.
@@ -269,6 +289,8 @@ catch localhost assumptions.
 | Env var change had no effect | `NEXT_PUBLIC_*` are build-time on Vercel — redeploy. Render needs a redeploy too. |
 | API logs `PRODUCTION without SENDGRID_API_KEY` | Expected and harmless here — it only means email magic links (and job-alert emails) are off. Google sign-in is unaffected. |
 | `docs` returns 404 | Intentional: `/docs` and `/redoc` are disabled when `ENVIRONMENT=production`. |
+| Build fails with `react/no-unescaped-entities` then `npm run build exited with 1` | You're building `main`, not `feat/updated-decode`. Set Branch Tracking as in step 4, then push to that branch. `main` is 25 commits behind and cannot build. |
+| Vercel shows "Install the GitHub application…" with no repos | Vercel's GitHub App isn't installed on the repo's account yet. Click Install → Only select repositories → pick this repo. |
 
 ---
 
