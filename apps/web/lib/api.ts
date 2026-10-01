@@ -288,7 +288,7 @@ export async function getJobSuggestions(
  * with no session at all for a true zero-friction anonymous 1-click apply. */
 export async function submitApplication(params: {
   jobId: number;
-  resumeFilename: string;
+  resumeFilename: string | null;
 }): Promise<Application> {
   return postJson<Application>("/api/v1/applications/submit", {
     job_id: params.jobId,
@@ -344,6 +344,7 @@ export async function googleAuth(credential: string): Promise<SessionResult> {
 }
 
 export interface UserPreferences {
+  full_name: string | null;
   target_roles: string[];
   preferred_cities: string[];
   preferred_work_mode: string | null;
@@ -367,6 +368,7 @@ export async function getPreferences(): Promise<UserPreferences> {
 
 /** Matches PUT /api/v1/users/preferences on services/core-api. */
 export async function updatePreferences(params: {
+  fullName?: string;
   targetRoles?: string[];
   preferredCities?: string[];
   preferredWorkMode?: string | null;
@@ -383,6 +385,7 @@ export async function updatePreferences(params: {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...authHeader() },
     body: JSON.stringify({
+      full_name: params.fullName,
       target_roles: params.targetRoles,
       preferred_cities: params.preferredCities,
       preferred_work_mode: params.preferredWorkMode,

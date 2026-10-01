@@ -97,6 +97,7 @@ function ProfileForm({ email }: { email: string }) {
     queryFn: () => getPreferences(),
   });
 
+  const [fullName, setFullName] = useState("");
   const [targetRoles, setTargetRoles] = useState("");
   const [skills, setSkills] = useState("");
   const [cities, setCities] = useState<string[]>([]);
@@ -113,6 +114,7 @@ function ProfileForm({ email }: { email: string }) {
   // otherwise typing would get clobbered by a background refetch.
   useEffect(() => {
     if (!data) return;
+    setFullName(data.full_name || "");
     setTargetRoles(data.target_roles.join(", "));
     setSkills(data.skills.join(", "));
     setCities(data.preferred_cities);
@@ -130,6 +132,7 @@ function ProfileForm({ email }: { email: string }) {
   const mutation = useMutation({
     mutationFn: () =>
       updatePreferences({
+        fullName: fullName.trim() || undefined,
         profileVisibleToRecruiters: visibleToRecruiters,
         targetRoles: targetRoles.split(",").map((s) => s.trim()).filter(Boolean),
         skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
@@ -176,6 +179,18 @@ function ProfileForm({ email }: { email: string }) {
           className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]"
         >
           <div>
+            <FieldLabel>Full name</FieldLabel>
+            <Input
+              placeholder="Priya Sharma"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+            <p className="mt-1 text-[12px] text-gray-400">
+              Shown to recruiters when they unlock your profile — defaults to your email if left blank.
+            </p>
+          </div>
+
+          <div>
             <FieldLabel>Target roles</FieldLabel>
             <Input
               placeholder="Backend Engineer, Data Scientist"
@@ -218,7 +233,7 @@ function ProfileForm({ email }: { email: string }) {
             </div>
             <div>
               <FieldLabel>Min salary (₹/yr)</FieldLabel>
-              <Input type="number" placeholder="1200000" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} />
+              <Input type="number" min={0} placeholder="1200000" value={minSalary} onChange={(e) => setMinSalary(e.target.value)} />
             </div>
             <div>
               <FieldLabel>Experience (yrs)</FieldLabel>

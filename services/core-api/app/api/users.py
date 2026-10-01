@@ -136,6 +136,8 @@ async def update_preferences(
     current_user: Annotated[User, Depends(require_session)],
 ) -> User:
     user = current_user
+    if payload.full_name is not None:
+        user.full_name = payload.full_name
     if payload.target_roles is not None:
         user.target_roles = payload.target_roles
     if payload.preferred_cities is not None:

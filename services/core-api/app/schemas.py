@@ -118,7 +118,11 @@ class ApplicationSubmitRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     job_id: int
-    resume_filename: str = Field(..., min_length=1, max_length=255)
+    # Nullable: a brand-new user has no resume yet and must still be able to
+    # track that they applied (simulating 10 fresh job-seeker accounts, every
+    # single one hit a hard wall here — Submit was disabled until a resume
+    # existed, which is backwards for a first-run product).
+    resume_filename: str | None = Field(None, max_length=255)
 
 
 class ApplicationSaveRequest(BaseModel):
@@ -239,6 +243,7 @@ class GoogleAuthRequest(BaseModel):
 class UserPreferencesRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    full_name: str | None = None
     target_roles: list[str] = Field(default_factory=list)
     preferred_cities: list[str] = Field(default_factory=list)
     preferred_work_mode: str | None = None
@@ -271,17 +276,36 @@ class UserPreferencesRead(BaseModel):
 class UserPreferencesUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # Magic-link sign-in has no profile source to pull a real name from (unlike
+    # Google Sign-In, which gets it from the account) — it defaults to the
+    # email's local-part (e.g. "priya.sharma@gmail.com" -> "priya.sharma") and,
+    # before this field existed, had no way to ever be corrected. That name is
+    # exactly what a recruiter sees on an unlocked candidate card.
+    full_name: str | None = Field(None, min_length=1, max_length=255)
     target_roles: list[str] | None = None
     preferred_cities: list[str] | None = None
     preferred_work_mode: str | None = None
-    min_salary: int | None = None
+    min_salary: int | None = Field(None, ge=0)
     skills: list[str] | None = None
-    experience_years: int | None = None
+    experience_years: int | None = Field(None, ge=0, le=60)
     notice_period: str | None = None
     github_url: str | None = None
     linkedin_url: str | None = None
     leetcode_url: str | None = None
     profile_visible_to_recruiters: bool | None = None
+
+    # Unvalidated link text was reaching recruiters' candidate cards verbatim
+    # (e.g. "not-a-url" rendered as a dead <a href>) — require it to at least
+    # look like a URL, same leniency for all three since none are OAuth-backed
+    # yet (that's a separate, bigger feature: real ownership verification).
+    @field_validator("github_url", "linkedin_url", "leetcode_url")
+    @classmethod
+    def _looks_like_a_url(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        if not value.startswith(("http://", "https://")) or "." not in value:
+            raise ValueError("must be a full URL starting with http:// or https://")
+        return value
 
 
 class RecruiterIdentifyResponse(BaseModel):

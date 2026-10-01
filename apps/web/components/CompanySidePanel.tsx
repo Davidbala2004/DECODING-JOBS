@@ -285,7 +285,7 @@ export function CompanySidePanel() {
   });
 
   const applyMutation = useMutation({
-    mutationFn: (v: { jobId: number; resumeFilename: string }) => submitApplication(v),
+    mutationFn: (v: { jobId: number; resumeFilename: string | null }) => submitApplication(v),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["applicationBoard", email] });
       toast.success("Application tracked");
@@ -608,11 +608,11 @@ export function CompanySidePanel() {
             </div>
           ) : (
             <Link
-              href="/assistant"
+              href={primaryJob ? `/assistant?jobId=${primaryJob.id}` : "/assistant"}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 bg-white py-2 text-[12.5px] font-semibold text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             >
               <FileText className="h-3.5 w-3.5" />
-              Upload a resume in AI Assistant
+              Upload a resume (optional) in AI Assistant
             </Link>
           )}
 
@@ -636,12 +636,11 @@ export function CompanySidePanel() {
           ) : (
             <button
               className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-[12.5px] font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl hover:shadow-green-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!primaryJob || !selectedResumeId || applyMutation.isPending}
-              title={!selectedResumeId ? "Upload a resume first" : undefined}
+              disabled={!primaryJob || applyMutation.isPending}
               onClick={() => {
+                if (!primaryJob) return;
                 const resume = resumes.find((r) => r.id === selectedResumeId);
-                if (!primaryJob || !resume) return;
-                applyMutation.mutate({ jobId: primaryJob.id, resumeFilename: resume.filename });
+                applyMutation.mutate({ jobId: primaryJob.id, resumeFilename: resume?.filename ?? null });
               }}
             >
               {applyMutation.isPending ? (
