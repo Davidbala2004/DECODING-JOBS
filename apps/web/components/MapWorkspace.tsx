@@ -795,7 +795,7 @@ export function MapWorkspace() {
     setSelectedArea(null);
   }, [selectedCity]);
 
-  const { data: companies, isLoading, isError } = useQuery({
+  const { data: companies, isLoading, isError, refetch: refetchCompanies } = useQuery({
     queryKey: ["companies", "search", bbox, selectedSector, selectedCity, hiringOnly, selectedStage, selectedArea, selectedType, selectedDepartment],
     queryFn: () =>
       searchCompaniesInBoundingBox(bbox as BoundingBox, {
@@ -1459,9 +1459,13 @@ export function MapWorkspace() {
           </div>
         )}
         {isError && (
-          <div className="hidden items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-500 shadow-lg sm:flex">
-            <AlertTriangle className="h-3.5 w-3.5" /> Error
-          </div>
+          <button
+            type="button"
+            onClick={() => refetchCompanies()}
+            className="flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-500 shadow-lg transition-colors hover:bg-red-100"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" /> Couldn&apos;t load companies — Retry
+          </button>
         )}
         {!isLoading && !isError && filteredCompanies && (
           <div className="hidden items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold shadow-lg sm:flex">
