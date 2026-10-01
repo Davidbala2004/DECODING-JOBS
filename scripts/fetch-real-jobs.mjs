@@ -23,6 +23,23 @@ import {
   classifyEmploymentType,
 } from "./lib/classify.mjs";
 
+// Adzuna occasionally serves titles/descriptions that were already
+// double-encoded upstream (a UTF-8 em-dash's bytes 0xE2 0x80 0x93 misread as
+// Latin-1 before Adzuna published them) — visible as garbage like
+// "Backend Engineer â\u0080\u0093 Node.js" instead of an em-dash. Repairable
+// by round-tripping through Latin-1, which recovers the original UTF-8
+// bytes. Only applied when the telltale "â" byte shows up, so clean text
+// (including real non-ASCII text) passes through untouched.
+function fixMojibake(text) {
+  if (!text || !text.includes("â")) return text;
+  try {
+    const repaired = Buffer.from(text, "latin1").toString("utf8");
+    return repaired.includes("�") ? text : repaired;
+  } catch {
+    return text;
+  }
+}
+
 const API_BASE = process.env.API_URL || "http://localhost:8000";
 const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID;
 const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY;
@@ -293,8 +310,8 @@ async function fetchAdzunaForCity(cityName) {
         const items = data.results || [];
         for (const item of items) {
           results.push({
-            title: item.title?.replace(/<[^>]+>/g, "") || query,
-            description: item.description || "",
+            title: fixMojibake(item.title?.replace(/<[^>]+>/g, "")) || query,
+            description: fixMojibake(item.description) || "",
             company: item.company?.display_name?.trim(),
             location: item.location?.display_name || cityName,
             latitude: item.latitude || null,

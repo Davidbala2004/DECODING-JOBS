@@ -350,6 +350,7 @@ Tables are created via SQL scripts in `infra/init-db/` (run once on first contai
 | `24-add-notice-period.sql` | `notice_period` on users |
 | `25-add-sessions.sql` | `magic_link_tokens` + `sessions` tables; `jobs.min_experience_years` made nullable (was defaulting to a misleading `0`) |
 | `26-deactivate-seed-companies.sql` | Deactivates the 5 placeholder jobs on the 3 hand-seeded demo companies (ids 1-3, predate real-data ingestion) — their `*.example.com` apply links don't resolve |
+| `27-fix-mojibake.sql` | Repairs Adzuna titles/descriptions that arrived double-encoded upstream (garbage like `â\u0080\u0093` instead of `–`) |
 
 ### Reset Database
 
