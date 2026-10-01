@@ -30,7 +30,7 @@ function CompanyVerification() {
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6" style={{ animation: "cardFadeIn 0.4s ease-out both" }}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-600">
         <Building2 className="h-6 w-6 text-white" />
       </div>
 
@@ -52,9 +52,9 @@ function CompanyVerification() {
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {(mutation.error as Error).message}
           </div>
-          <p className="max-w-xs text-center text-[12.5px] text-gray-400">
+          <p className="max-w-xs text-center text-xs text-gray-500">
             Haven&apos;t registered your company yet?{" "}
-            <Link href="/register" className="font-semibold text-green-600 hover:underline">
+            <Link href="/register" className="font-semibold text-green-700 hover:underline">
               Do that first
             </Link>
             .

@@ -88,20 +88,20 @@ export function SavedSearchesButton({
 
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.15)]"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
           style={{ animation: "fadeSlideUp 0.2s ease-out" }}
         >
           <div className="flex items-center gap-2 border-b border-green-50 px-4 py-3">
-            <Bookmark className="h-3.5 w-3.5 text-green-600" />
+            <Bookmark className="h-3.5 w-3.5 text-green-700" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Saved searches</h3>
-            <button type="button" onClick={() => setOpen(false)} className="ml-auto rounded-full p-1 text-gray-400 hover:bg-gray-100">
+            <button type="button" onClick={() => setOpen(false)} className="ml-auto rounded-full p-1 text-gray-500 hover:bg-gray-100">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {!email ? (
             <div className="p-4 text-center text-xs text-gray-500">
-              <Link href="/profile" className="font-semibold text-green-600 hover:underline">
+              <Link href="/profile" className="font-semibold text-green-700 hover:underline">
                 Sign in
               </Link>{" "}
               to save searches and get email alerts for new matching jobs.
@@ -120,8 +120,8 @@ export function SavedSearchesButton({
                     type="button"
                     onClick={() => setAlertsEnabled((v) => !v)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12.5px] font-semibold transition-colors",
-                      alertsEnabled ? "bg-green-50 text-green-700" : "text-gray-400 hover:text-gray-600"
+                      "flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-colors",
+                      alertsEnabled ? "bg-green-50 text-green-700" : "text-gray-500 hover:text-gray-600"
                     )}
                   >
                     {alertsEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
@@ -131,7 +131,7 @@ export function SavedSearchesButton({
                     type="button"
                     disabled={!label.trim() || createMutation.isPending}
                     onClick={() => createMutation.mutate()}
-                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1.5 text-[12.5px] font-bold text-white shadow-sm disabled:opacity-40"
+                    className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm disabled:opacity-40"
                   >
                     {createMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookmarkCheck className="h-3 w-3" />}
                     Save
@@ -142,11 +142,11 @@ export function SavedSearchesButton({
               <div className="scroll-thin max-h-56 overflow-y-auto p-2">
                 {isLoading && (
                   <div className="flex justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-green-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-green-700" />
                   </div>
                 )}
                 {!isLoading && (!savedSearches || savedSearches.length === 0) && (
-                  <p className="px-2 py-3 text-center text-[12.5px] text-gray-400">No saved searches yet.</p>
+                  <p className="px-2 py-3 text-center text-xs text-gray-500">No saved searches yet.</p>
                 )}
                 {savedSearches?.map((s) => (
                   <div
@@ -158,13 +158,13 @@ export function SavedSearchesButton({
                       onClick={() => { onApply(s.filters); setOpen(false); }}
                       className="flex flex-1 items-center gap-1.5 text-left text-xs font-medium text-gray-700"
                     >
-                      {s.email_alerts_enabled && <Bell className="h-3 w-3 shrink-0 text-green-500" />}
+                      {s.email_alerts_enabled && <Bell className="h-3 w-3 shrink-0 text-green-700" />}
                       <span className="truncate">{s.label}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteMutation.mutate(s.id)}
-                      className="shrink-0 rounded-md p-1 text-gray-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                      className="shrink-0 rounded-md p-1 text-gray-500 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>

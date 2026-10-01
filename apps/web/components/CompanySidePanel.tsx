@@ -69,12 +69,12 @@ function formatSalaryRange(job: Job): string {
 function EmptyState() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50">
-        <MapPin className="h-6 w-6 text-green-400" />
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-emerald-50">
+        <MapPin className="h-6 w-6 text-green-700" />
       </div>
       <div>
         <p className="text-sm font-semibold text-gray-900">Select a company</p>
-        <p className="mt-1 text-xs text-gray-400">Click any pin on the map to view roles & info</p>
+        <p className="mt-1 text-xs text-gray-500">Click any pin on the map to view roles & info</p>
       </div>
     </div>
   );
@@ -83,11 +83,11 @@ function EmptyState() {
 function ErrorState() {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-red-50">
         <AlertTriangle className="h-6 w-6 text-red-400" />
       </div>
       <p className="text-sm font-medium text-gray-900">Couldn&apos;t load details</p>
-      <p className="text-xs text-gray-400">Try selecting again</p>
+      <p className="text-xs text-gray-500">Try selecting again</p>
     </div>
   );
 }
@@ -95,7 +95,7 @@ function ErrorState() {
 function LoadingSkeleton() {
   return (
     <div className="flex h-full w-full flex-col gap-3 p-4">
-      <div className="h-20 animate-pulse rounded-2xl bg-green-50" />
+      <div className="h-20 animate-pulse rounded-xl bg-green-50" />
       <div className="h-16 animate-pulse rounded-xl bg-gray-50" />
       <div className="h-32 animate-pulse rounded-xl bg-gray-50" />
     </div>
@@ -107,7 +107,7 @@ function CompanyInfoBar({ company }: { company: Company }) {
     company.active_job_count > 0 && {
       icon: Briefcase,
       label: `${company.active_job_count} open`,
-      color: "text-green-600",
+      color: "text-green-700",
       bg: "bg-green-50",
     },
     company.team_size && {
@@ -135,7 +135,7 @@ function CompanyInfoBar({ company }: { company: Company }) {
       {items.map((item, i) => (
         <span
           key={i}
-          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11.5px] font-semibold ${item.color} ${item.bg}`}
+          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${item.color} ${item.bg}`}
         >
           <item.icon className="h-3 w-3" />
           {item.label}
@@ -161,13 +161,13 @@ function RoleCard({
     <div className="rounded-xl border border-gray-100 bg-white p-3 transition-all hover:border-green-200 hover:shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-gray-900">{job.title}</p>
+          <p className="truncate text-sm font-semibold text-gray-900">{job.title}</p>
           {job.salary_min || job.salary_max ? (
-            <p className="mt-0.5 text-[12.5px] text-gray-400">{formatSalaryRange(job)}</p>
+            <p className="mt-0.5 text-xs text-gray-500">{formatSalaryRange(job)}</p>
           ) : null}
           <div className="mt-1.5 flex items-center gap-1 flex-wrap">
             {mode && (
-              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-500">
+              <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-bold uppercase text-gray-500">
                 {mode}
               </span>
             )}
@@ -177,7 +177,7 @@ function RoleCard({
               </span>
             )}
             {job.source && !SOURCE_BADGES[job.source] && (
-              <span className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold text-gray-500 capitalize">
+              <span className="rounded-md bg-gray-50 px-1.5 py-0.5 text-xs font-bold text-gray-500 capitalize">
                 {job.source}
               </span>
             )}
@@ -193,8 +193,8 @@ function RoleCard({
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-lg border transition-all",
                 isSaved
-                  ? "border-green-200 bg-green-50 text-green-600"
-                  : "border-gray-200 text-gray-400 hover:border-green-200 hover:bg-green-50 hover:text-green-600"
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : "border-gray-200 text-gray-500 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
               )}
             >
               <Bookmark className="h-3.5 w-3.5" fill={isSaved ? "currentColor" : "none"} />
@@ -203,7 +203,7 @@ function RoleCard({
           <Link
             href={`/assistant?jobId=${job.id}`}
             title="Prep for this role with the AI Assistant"
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-600"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
           >
             <GraduationCap className="h-3.5 w-3.5" />
           </Link>
@@ -212,13 +212,13 @@ function RoleCard({
               href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-[11.5px] font-bold text-white transition-colors hover:bg-green-700"
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-700"
             >
               <Zap className="h-3 w-3" />
               APPLY
             </a>
           ) : (
-            <span className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-[11.5px] font-bold text-gray-400">
+            <span className="rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-500">
               APPLY
             </span>
           )}
@@ -368,7 +368,7 @@ export function CompanySidePanel() {
         }
       `}</style>
       {/* ── Company Header ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-green-50 via-white to-emerald-50/50 p-3.5">
+      <div className="rounded-xl bg-gradient-to-br from-green-50 via-white to-emerald-50/50 p-3.5">
         <div className="flex items-start gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -387,18 +387,18 @@ export function CompanySidePanel() {
             <h1 className="truncate text-base font-bold text-gray-900">{company.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {company.sector && (
-                <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-green-700">
+                <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-xs font-bold uppercase text-green-700">
                   {company.sector}
                 </span>
               )}
               {company.stage && (
-                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-500">
+                <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-bold uppercase text-gray-500">
                   {company.stage}
                 </span>
               )}
               {company.area && (
-                <span className="flex items-center gap-0.5 text-[12.5px] text-gray-500">
-                  <MapPin className="h-2.5 w-2.5 text-green-400" />
+                <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                  <MapPin className="h-2.5 w-2.5 text-green-700" />
                   {company.area}{company.city ? `, ${company.city}` : ""}
                 </span>
               )}
@@ -407,7 +407,7 @@ export function CompanySidePanel() {
         </div>
 
         {company.description && (
-          <p className="mt-2.5 line-clamp-3 text-[12.5px] leading-relaxed text-gray-600">
+          <p className="mt-2.5 line-clamp-3 text-xs leading-relaxed text-gray-600">
             {company.description}
           </p>
         )}
@@ -425,11 +425,11 @@ export function CompanySidePanel() {
               href={company.website_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             >
               <Globe className="h-3.5 w-3.5" />
               {websiteDomain || "Website"}
-              <ArrowUpRight className="h-3 w-3 text-gray-400" />
+              <ArrowUpRight className="h-3 w-3 text-gray-500" />
             </a>
           )}
           {company.linkedin_url && (
@@ -437,11 +437,11 @@ export function CompanySidePanel() {
               href={company.linkedin_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
             >
               <Linkedin className="h-3.5 w-3.5" />
               LinkedIn
-              <ArrowUpRight className="h-3 w-3 text-gray-400" />
+              <ArrowUpRight className="h-3 w-3 text-gray-500" />
             </a>
           )}
         </div>
@@ -450,10 +450,10 @@ export function CompanySidePanel() {
       {/* ── Section: Open Roles ── */}
       <div className="rounded-xl border border-gray-100 bg-white p-3">
         <div className="mb-2 flex items-center gap-1.5">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-xs font-bold text-green-700">{++_sec}</span>
           <h2 className="text-xs font-bold text-gray-900">Open Roles</h2>
           {jobs.length > 0 && (
-            <span className="ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">{jobs.length}</span>
+            <span className="ml-auto rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-bold text-green-700">{jobs.length}</span>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
@@ -468,7 +468,7 @@ export function CompanySidePanel() {
               />
             ))
           ) : (
-            <p className="py-2 text-center text-[12.5px] text-gray-400">No active roles right now</p>
+            <p className="py-2 text-center text-xs text-gray-500">No active roles right now</p>
           )}
         </div>
       </div>
@@ -477,27 +477,27 @@ export function CompanySidePanel() {
       {hasSentiment && (
         <div className="rounded-xl border border-gray-100 bg-white p-3">
           <div className="mb-2 flex items-center gap-1.5">
-            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-xs font-bold text-green-700">{++_sec}</span>
             <h2 className="text-xs font-bold text-gray-900">Company Pulse</h2>
           </div>
           <div className="flex flex-col gap-1">
             {pros.map((pro) => (
               <div key={pro} className="flex items-start gap-1.5 rounded-lg bg-green-50/50 px-2 py-1.5">
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-green-500" />
-                <span className="text-[12.5px] text-gray-700">{pro}</span>
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-green-700" />
+                <span className="text-xs text-gray-700">{pro}</span>
               </div>
             ))}
             {cons.map((con) => (
               <div key={con} className="flex items-start gap-1.5 rounded-lg bg-red-50/50 px-2 py-1.5">
                 <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-400" />
-                <span className="text-[12.5px] text-gray-700">{con}</span>
+                <span className="text-xs text-gray-700">{con}</span>
               </div>
             ))}
           </div>
           {company.culture_score !== null && (
             <div className="mt-2 flex items-center justify-between rounded-lg bg-gray-50 px-2.5 py-1.5">
-              <span className="text-[11.5px] font-medium text-gray-500">Culture Score</span>
-              <span className="text-[12.5px] font-bold text-gray-900">{company.culture_score!.toFixed(1)} / 5</span>
+              <span className="text-xs font-medium text-gray-500">Culture Score</span>
+              <span className="text-xs font-bold text-gray-900">{company.culture_score!.toFixed(1)} / 5</span>
             </div>
           )}
         </div>
@@ -506,7 +506,7 @@ export function CompanySidePanel() {
       {/* ── Section: Apply ── */}
       <div className="rounded-xl border border-green-100 bg-gradient-to-br from-green-50/30 to-white p-3">
         <div className="mb-2 flex items-center gap-1.5">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-xs font-bold text-green-700">{++_sec}</span>
           <h2 className="text-xs font-bold text-gray-900">Apply</h2>
         </div>
         <div className="flex flex-col gap-2">
@@ -520,15 +520,15 @@ export function CompanySidePanel() {
                 onClick={() => setRoleDropdownOpen((v) => !v)}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-all hover:border-green-200"
               >
-                <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-gray-600">
-                  <Briefcase className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                <span className="flex min-w-0 items-center gap-1.5 text-xs text-gray-600">
+                  <Briefcase className="h-3.5 w-3.5 shrink-0 text-green-700" />
                   <span className="truncate font-semibold text-gray-800">{primaryJob?.title}</span>
                 </span>
-                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform", roleDropdownOpen && "rotate-180")} />
+                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform", roleDropdownOpen && "rotate-180")} />
               </button>
               {roleDropdownOpen && (
                 <div
-                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
                   style={{ animation: "fadeSlideUp 0.15s ease-out" }}
                 >
                   {jobs.map((j) => (
@@ -541,7 +541,7 @@ export function CompanySidePanel() {
                         setRoleDropdownOpen(false);
                       }}
                       className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
+                        "flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors",
                         j.id === primaryJob?.id ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
                       )}
                     >
@@ -561,17 +561,17 @@ export function CompanySidePanel() {
                 onClick={() => setResumeDropdownOpen((v) => !v)}
                 className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition-all hover:border-green-200"
               >
-                <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-gray-600">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                <span className="flex min-w-0 items-center gap-1.5 text-xs text-gray-600">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-green-700" />
                   <span className="truncate">
                     {resumes.find((r) => r.id === selectedResumeId)?.filename ?? "Select a resume"}
                   </span>
                 </span>
-                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform", resumeDropdownOpen && "rotate-180")} />
+                <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-gray-500 transition-transform", resumeDropdownOpen && "rotate-180")} />
               </button>
               {resumeDropdownOpen && (
                 <div
-                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+                  className="absolute left-0 right-0 top-full z-20 mt-1.5 max-h-48 overflow-y-auto rounded-lg border border-gray-100 bg-white py-1 shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
                   style={{ animation: "fadeSlideUp 0.15s ease-out" }}
                 >
                   {resumes.map((r) => (
@@ -583,13 +583,13 @@ export function CompanySidePanel() {
                         setResumeDropdownOpen(false);
                       }}
                       className={cn(
-                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
+                        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors",
                         r.id === selectedResumeId ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
                       )}
                     >
                       <span className="truncate">{r.filename}</span>
                       {r.ats_score !== null && (
-                        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
+                        <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs font-bold text-gray-500">
                           ATS {r.ats_score}
                         </span>
                       )}
@@ -601,7 +601,7 @@ export function CompanySidePanel() {
           ) : (
             <Link
               href={primaryJob ? `/assistant?jobId=${primaryJob.id}` : "/assistant"}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 bg-white py-2 text-[12.5px] font-semibold text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 bg-white py-2 text-xs font-semibold text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
             >
               <FileText className="h-3.5 w-3.5" />
               Upload a resume (optional) in AI Assistant
@@ -612,7 +612,7 @@ export function CompanySidePanel() {
           {primaryJob && resumes.length > 0 && (
             <Link
               href={`/assistant?jobId=${primaryJob.id}`}
-              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-green-200 bg-white py-1.5 text-[11.5px] font-semibold text-green-600 transition-all hover:bg-green-50"
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-green-200 bg-white py-1.5 text-xs font-semibold text-green-700 transition-all hover:bg-green-50"
             >
               <Sparkles className="h-3 w-3" />
               Tailor resume for this role
@@ -622,7 +622,7 @@ export function CompanySidePanel() {
           {/* Submit */}
           {hasApplied ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-[12.5px] font-bold text-white shadow-md shadow-green-500/20">
+              <div className="flex items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-xs font-bold text-white shadow-md shadow-green-500/20">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Applied
               </div>
@@ -632,7 +632,7 @@ export function CompanySidePanel() {
                   the user applies, finds an empty board later, and has no idea
                   why. */}
               {!email && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-800">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
                   <p className="font-semibold">This application isn&apos;t saved to an account</p>
                   <p className="mt-0.5 text-amber-700">
                     Sign in to track it, and every later application, on your board.
@@ -648,7 +648,7 @@ export function CompanySidePanel() {
             </div>
           ) : (
             <button
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-[12.5px] font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl hover:shadow-green-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-green-500/25 transition-all hover:shadow-xl hover:shadow-green-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!primaryJob || applyMutation.isPending}
               onClick={() => {
                 if (!primaryJob) return;
@@ -664,7 +664,7 @@ export function CompanySidePanel() {
             </button>
           )}
           {applyMutation.isError && (
-            <p className="text-[11.5px] text-red-500">Submission failed. Try again.</p>
+            <p className="text-xs text-red-500">Submission failed. Try again.</p>
           )}
         </div>
       </div>
@@ -683,20 +683,20 @@ export function CompanySidePanel() {
         return (
           <div className="rounded-xl border border-gray-100 bg-white p-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-[11px] font-bold text-green-700">{++_sec}</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-md bg-green-100 text-xs font-bold text-green-700">{++_sec}</span>
               <h2 className="text-xs font-bold text-gray-900">Job Description</h2>
               {jobs.length > 1 && (
-                <span className="ml-auto truncate text-[11.5px] font-semibold text-gray-400">{primaryJob.title}</span>
+                <span className="ml-auto truncate text-xs font-semibold text-gray-500">{primaryJob.title}</span>
               )}
             </div>
-            <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-gray-600">
+            <p className="whitespace-pre-line text-xs leading-relaxed text-gray-600">
               {shown || "No description available."}
             </p>
             {isLong && (
               <button
                 type="button"
                 onClick={() => setDescExpanded((v) => !v)}
-                className="mt-1.5 text-[12px] font-bold text-green-600 hover:text-green-700"
+                className="mt-1.5 text-xs font-bold text-green-700 hover:text-green-700"
               >
                 {descExpanded ? "Show less" : "Show more"}
               </button>

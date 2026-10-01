@@ -105,12 +105,12 @@ function RoundStepper({ applicationId, round }: { applicationId: number; round: 
           />
         ))}
       </div>
-      <span className="text-[11.5px] font-bold text-green-700">Round {round}</span>
+      <span className="text-xs font-bold text-green-700">Round {round}</span>
       <button
         type="button"
         disabled={mutation.isPending}
         onClick={() => mutation.mutate({ applicationId, interviewRound: round + 1 })}
-        className="ml-auto flex items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-bold text-green-700 transition-all hover:bg-green-100 active:scale-95"
+        className="ml-auto flex items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-green-700 transition-all hover:bg-green-100 active:scale-95"
       >
         <Plus className="h-2.5 w-2.5" />
         Next round
@@ -163,13 +163,13 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
       {...listeners}
       {...attributes}
       className={cn(
-        "cursor-grab rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition-all duration-200 active:cursor-grabbing",
-        isDragging ? "opacity-0" : "hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_10px_28px_rgba(22,163,74,0.14)]"
+        "cursor-grab rounded-xl border border-gray-100 bg-white p-3 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition-all duration-200 active:cursor-grabbing",
+        isDragging ? "opacity-0" : "hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.16)]"
       )}
       style={{ animation: `cardFadeIn 0.35s ease-out ${Math.min(index, 8) * 0.04}s both` }}
     >
       <div className="flex items-start gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-xs font-bold text-green-700">
           {logo ? (
             <img
               src={logo}
@@ -185,13 +185,13 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-          <p className="truncate text-[12.5px] text-gray-500">{card.job.title}</p>
+          <p className="truncate text-xs font-bold text-gray-900">{company.name}</p>
+          <p className="truncate text-xs text-gray-500">{card.job.title}</p>
         </div>
       </div>
 
       {card.auto_tracked && (
-        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-600">
+        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-bold text-green-700">
           <Mail className="h-2.5 w-2.5" />
           Auto-updated from email
         </span>
@@ -199,7 +199,7 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
 
       {card.resume_filename && (
         <span
-          className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500"
+          className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-gray-50 px-1.5 py-0.5 text-xs font-semibold text-gray-500"
           title={card.resume_filename}
         >
           <FileText className="h-2.5 w-2.5 shrink-0" />
@@ -216,7 +216,7 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
           className="mt-2.5 flex flex-col gap-1.5 rounded-xl border border-amber-100 bg-amber-50/60 p-2"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <p className="flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+          <p className="flex items-center gap-1 text-xs font-semibold text-amber-700">
             <HelpCircle className="h-3 w-3 shrink-0" /> Did you apply to this one?
           </p>
           <div className="flex gap-1.5">
@@ -224,14 +224,14 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
               type="button"
               disabled={markAppliedMutation.isPending}
               onClick={() => markAppliedMutation.mutate()}
-              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-600 py-1 text-[11px] font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-600 py-1 text-xs font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
             >
               {markAppliedMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes, mark applied"}
             </button>
             <button
               type="button"
               onClick={() => setNudgeDismissed(true)}
-              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-100"
             >
               Not yet
             </button>
@@ -241,14 +241,14 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
 
       <div className="mt-2.5 flex items-center justify-between">
         {company.area || company.city ? (
-          <span className="flex items-center gap-0.5 text-[11.5px] text-gray-400">
+          <span className="flex items-center gap-0.5 text-xs text-gray-500">
             <MapPin className="h-2.5 w-2.5" />
             {company.area || company.city}
           </span>
         ) : (
           <span />
         )}
-        <span className="text-[11.5px] font-medium text-gray-300">
+        <span className="text-xs font-medium text-gray-500">
           {days === 0 ? "today" : `${days}d ago`}
         </span>
       </div>
@@ -260,14 +260,14 @@ function KanbanCardPreview({ card }: { card: ApplicationBoardCard }) {
   const company = card.job.company;
   const logo = logoUrlFor(company.website_url);
   return (
-    <div className="w-[240px] rotate-2 rounded-2xl border border-green-200 bg-white p-3 shadow-[0_16px_40px_rgba(22,163,74,0.25)]">
+    <div className="w-[240px] rotate-2 rounded-xl border border-green-200 bg-white p-3 shadow-[0_6px_20px_rgba(22,163,74,0.16)]">
       <div className="flex items-center gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-xs font-bold text-green-700">
           {logo ? <img src={logo} alt={company.name} className="h-full w-full object-contain p-1" /> : getInitials(company.name)}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-          <p className="truncate text-[12.5px] text-gray-500">{card.job.title}</p>
+          <p className="truncate text-xs font-bold text-gray-900">{company.name}</p>
+          <p className="truncate text-xs text-gray-500">{card.job.title}</p>
         </div>
       </div>
     </div>
@@ -297,8 +297,8 @@ function KanbanColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex h-full min-w-[260px] flex-1 flex-col rounded-2xl border transition-all duration-200",
-        isOver ? "scale-[1.01] border-green-300 bg-green-50/50 shadow-[0_0_0_4px_rgba(34,197,94,0.1)]" : "border-gray-100 bg-gray-50/60"
+        "flex h-full min-w-[260px] flex-1 flex-col rounded-xl border transition-all duration-200",
+        isOver ? "scale-[1.01] border-green-300 bg-green-50/50 ring-2 ring-green-500/20" : "border-gray-100 bg-gray-50/60"
       )}
     >
       <div className="flex items-center gap-2 px-3.5 py-3">
@@ -309,13 +309,13 @@ function KanbanColumn({
           <Icon className="h-3.5 w-3.5" style={{ color: accent }} />
         </span>
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-600">{label}</h3>
-        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 text-[11.5px] font-bold text-gray-500 shadow-sm">
+        <span className="ml-auto rounded-full bg-white px-1.5 py-0.5 text-xs font-bold text-gray-500 shadow-sm">
           {cards.length}
         </span>
       </div>
       <div className="scroll-thin flex flex-1 flex-col gap-2 overflow-y-auto px-2.5 pb-3">
         {cards.length === 0 ? (
-          <p className="py-6 text-center text-[12.5px] text-gray-300">Drop a card here</p>
+          <p className="py-6 text-center text-xs text-gray-500">Drop a card here</p>
         ) : (
           cards.map((card, i) => <KanbanCard key={card.id} card={card} index={i} />)
         )}
@@ -337,10 +337,10 @@ function ForwardingBanner() {
 
   if (!forwardingAddress) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3.5 py-2.5 text-[12.5px] text-gray-400">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-3.5 py-2.5 text-xs text-gray-500">
         <Mail className="h-3.5 w-3.5 shrink-0" />
         <span className="flex-1">Email auto-tracking isn&apos;t set up yet — advance rounds with the button on each card for now.</span>
-        <button type="button" onClick={() => setDismissed(true)} className="shrink-0 text-gray-300 hover:text-gray-500">
+        <button type="button" onClick={() => setDismissed(true)} className="shrink-0 text-gray-500 hover:text-gray-500">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -348,8 +348,8 @@ function ForwardingBanner() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5 text-[12.5px] text-green-800">
-      <Mail className="h-3.5 w-3.5 shrink-0 text-green-500" />
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5 text-xs text-green-800">
+      <Mail className="h-3.5 w-3.5 shrink-0 text-green-700" />
       <span className="flex-1">
         Forward interview emails to <span className="font-mono font-bold">{forwardingAddress}</span> to auto-update this board
       </span>
@@ -360,12 +360,12 @@ function ForwardingBanner() {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         }}
-        className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11.5px] font-bold text-green-700 shadow-sm transition-all hover:shadow-md active:scale-95"
+        className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-bold text-green-700 shadow-sm transition-all hover:shadow-md active:scale-95"
       >
         {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         {copied ? "Copied" : "Copy"}
       </button>
-      <button type="button" onClick={() => setDismissed(true)} className="shrink-0 text-green-300 hover:text-green-500">
+      <button type="button" onClick={() => setDismissed(true)} className="shrink-0 text-green-600 hover:text-green-700">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -440,10 +440,10 @@ export function KanbanBoard() {
         <div className="h-6 w-40 animate-pulse rounded-lg bg-gray-100" />
         <div className="flex flex-1 gap-3 overflow-hidden">
           {COLUMNS.map((column) => (
-            <div key={column.status} className="flex h-full min-w-[260px] flex-1 flex-col rounded-2xl border border-gray-100 bg-gray-50/60 p-3">
+            <div key={column.status} className="flex h-full min-w-[260px] flex-1 flex-col rounded-xl border border-gray-100 bg-gray-50/60 p-3">
               <div className="mb-3 h-5 w-24 animate-pulse rounded-lg bg-gray-200/70" />
               {[0, 1].map((i) => (
-                <div key={i} className="mb-2 h-20 animate-pulse rounded-2xl bg-white" style={{ animationDelay: `${i * 0.1}s` }} />
+                <div key={i} className="mb-2 h-20 animate-pulse rounded-xl bg-white" style={{ animationDelay: `${i * 0.1}s` }} />
               ))}
             </div>
           ))}
@@ -455,12 +455,12 @@ export function KanbanBoard() {
   if (isError) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
           <AlertTriangle className="h-5 w-5 text-red-400" />
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900">Couldn&apos;t load your board</p>
-          <p className="mt-0.5 text-xs text-gray-400">Check your connection and try again</p>
+          <p className="mt-0.5 text-xs text-gray-500">Check your connection and try again</p>
         </div>
         <button
           type="button"
@@ -488,7 +488,7 @@ export function KanbanBoard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-base font-bold text-gray-900">Application Tracker</h1>
-          <p className="text-xs text-gray-400">Signed in as {email}</p>
+          <p className="text-xs text-gray-500">Signed in as {email}</p>
         </div>
       </div>
       <ForwardingBanner />

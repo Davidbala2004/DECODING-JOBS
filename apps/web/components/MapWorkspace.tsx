@@ -9,7 +9,7 @@ import {
   Search,
   Plus,
   Minus,
-  Compass,
+  LocateFixed,
   Loader2,
   AlertTriangle,
   Briefcase,
@@ -232,19 +232,19 @@ const CompanyPin = React.memo(function CompanyPin({
       {/* ── Floating name pill (selected) ── */}
       {isSelected && (
         <div
-          className="mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-bold text-white z-50"
+          className="mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold text-white z-50"
           style={{
             background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           }}
         >
           {isHiring && (
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[8px]">
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-xs">
               <Briefcase className="h-2.5 w-2.5 text-white" />
             </span>
           )}
           {company.name}
-          {isHiring && <span className="text-green-400">· {company.active_job_count} open</span>}
+          {isHiring && <span className="text-green-700">· {company.active_job_count} open</span>}
         </div>
       )}
 
@@ -344,7 +344,7 @@ const CompanyPin = React.memo(function CompanyPin({
             so a freshly-opened role is visually obvious at a glance. */}
         {company.recently_hiring && (
           <div
-            className="absolute flex items-center justify-center rounded-full bg-lime-400 px-1.5 py-0.5 text-[8px] font-extrabold text-emerald-950 shadow-md"
+            className="absolute flex items-center justify-center rounded-full bg-lime-400 px-1.5 py-0.5 text-xs font-extrabold text-emerald-950 shadow-md"
             style={{ top: -8, left: "50%", transform: "translateX(-50%)", animation: "newFlash 1.1s ease-in-out infinite", border: "1.5px solid white" }}
           >
             NEW
@@ -382,18 +382,18 @@ const CompanyPin = React.memo(function CompanyPin({
             <span>{company.sector || "Other"}</span>
             {company.area && (
               <>
-                <span className="text-gray-300">·</span>
+                <span className="text-gray-500">·</span>
                 <span>{company.area}</span>
               </>
             )}
           </div>
           {isHiring ? (
-            <div className="mt-1.5 flex items-center gap-1 text-green-600 font-semibold">
+            <div className="mt-1.5 flex items-center gap-1 text-green-700 font-semibold">
               <TrendingUp className="h-3 w-3" />
               {company.active_job_count} open roles
             </div>
           ) : (
-            <div className="mt-1.5 text-gray-400">Not hiring right now</div>
+            <div className="mt-1.5 text-gray-500">Not hiring right now</div>
           )}
         </div>
       )}
@@ -429,12 +429,12 @@ const CityPin = React.memo(function CityPin({
       {/* Tooltip — city name + counts, shown only on hover/select */}
       {isActive && (
         <div
-          className="absolute bottom-full mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[12.5px] font-bold text-white shadow-lg"
+          className="absolute bottom-full mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-lg"
           style={{ background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)", animation: "fadeSlideUp 0.15s ease-out" }}
         >
           {cityName}
           <span className="text-white/60">· {count}</span>
-          {hasHiring && <span className="text-green-400">· {hiringCount} hiring</span>}
+          {hasHiring && <span className="text-green-700">· {hiringCount} hiring</span>}
         </div>
       )}
 
@@ -562,7 +562,7 @@ const ClusterPin = React.memo(function ClusterPin({
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="flex items-center gap-1 rounded-full bg-green-600 py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-white">
+    <span className="flex items-center gap-1 rounded-full bg-green-600 py-1 pl-2.5 pr-1.5 text-xs font-bold text-white">
       {label}
       <button
         type="button"
@@ -576,7 +576,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
 }
 
 function EmptyFacetHint({ text }: { text: string }) {
-  return <p className="px-2.5 py-1.5 text-[12.5px] text-gray-300">{text}</p>;
+  return <p className="px-2.5 py-1.5 text-xs text-gray-500">{text}</p>;
 }
 
 // ---------------------------------------------------------------------------
@@ -605,7 +605,7 @@ const CompanyGridCard = React.memo(function CompanyGridCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex flex-col items-start gap-2.5 rounded-2xl border bg-white p-3.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+        "group flex flex-col items-start gap-2.5 rounded-xl border bg-white p-3.5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
         isSelected ? "border-green-300 ring-2 ring-green-400/30" : "border-gray-100 hover:border-green-200"
       )}
     >
@@ -620,21 +620,21 @@ const CompanyGridCard = React.memo(function CompanyGridCard({
           />
         ) : (
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[12.5px] font-bold text-white"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
             style={{ background: sector.color }}
           >
             {getInitials(company.name)}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-bold text-gray-900">{company.name}</p>
-          <p className="mt-0.5 truncate text-[12px] text-gray-400">
+          <p className="truncate text-sm font-bold text-gray-900">{company.name}</p>
+          <p className="mt-0.5 truncate text-xs text-gray-500">
             {company.area ? `${company.area}, ` : ""}{company.city}
           </p>
         </div>
         {company.recently_hiring ? (
           <span
-            className="shrink-0 rounded-full bg-lime-400 px-1.5 py-0.5 text-[8px] font-extrabold text-emerald-950"
+            className="shrink-0 rounded-full bg-lime-400 px-1.5 py-0.5 text-xs font-extrabold text-emerald-950"
             style={{ animation: "newFlash 1.1s ease-in-out infinite" }}
             title="New role posted recently"
           >
@@ -648,31 +648,31 @@ const CompanyGridCard = React.memo(function CompanyGridCard({
       <div className="flex flex-wrap items-center gap-1">
         {company.sector && (
           <span
-            className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase"
+            className="rounded-md px-1.5 py-0.5 text-xs font-bold uppercase"
             style={{ color: sector.color, background: `${sector.color}18` }}
           >
             {company.sector}
           </span>
         )}
         {company.stage && (
-          <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-gray-500">
+          <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-bold uppercase text-gray-500">
             {company.stage}
           </span>
         )}
         {company.team_size && (
-          <span className="text-[9.5px] text-gray-400">{company.team_size}</span>
+          <span className="text-xs text-gray-500">{company.team_size}</span>
         )}
       </div>
 
       {company.description && (
-        <p className="line-clamp-2 text-[12px] leading-snug text-gray-400">{company.description}</p>
+        <p className="line-clamp-2 text-xs leading-snug text-gray-500">{company.description}</p>
       )}
 
       <div className="mt-auto flex w-full items-center justify-between pt-1">
-        <span className={cn("text-[12px] font-semibold", isHiring ? "text-green-600" : "text-gray-300")}>
+        <span className={cn("text-xs font-semibold", isHiring ? "text-green-700" : "text-gray-500")}>
           {isHiring ? `${company.active_job_count} open role${company.active_job_count !== 1 ? "s" : ""}` : "No open roles"}
         </span>
-        <span className="flex items-center gap-0.5 text-[12px] font-semibold text-gray-400 opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="flex items-center gap-0.5 text-xs font-semibold text-gray-500 opacity-0 transition-opacity group-hover:opacity-100">
           View <ChevronDown className="h-3 w-3 -rotate-90" />
         </span>
       </div>
@@ -693,7 +693,7 @@ function CompanyGridView({
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center">
         <Building2 className="h-8 w-8 text-gray-200" />
-        <p className="text-sm font-medium text-gray-400">No companies match these filters</p>
+        <p className="text-sm font-medium text-gray-500">No companies match these filters</p>
       </div>
     );
   }
@@ -1218,11 +1218,11 @@ export function MapWorkspace() {
             >
               <div className="scroll-thin flex max-h-72 w-64 flex-col overflow-y-auto rounded-xl">
                 <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-3 py-2">
-                  <span className="text-[12.5px] font-bold text-gray-800">{totalCount} companies here</span>
+                  <span className="text-xs font-bold text-gray-800">{totalCount} companies here</span>
                   <button
                     type="button"
                     onClick={() => setOpenClusterId(null)}
-                    className="flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -1243,17 +1243,17 @@ export function MapWorkspace() {
                         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-green-50"
                       >
                         <div
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11.5px] font-bold text-white"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
                           style={{ background: sector.color }}
                         >
                           {getInitials(company.name)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11.5px] font-semibold text-gray-800">{company.name}</p>
-                          <p className="truncate text-[9.5px] text-gray-400">{company.area ? `${company.area}, ` : ""}{company.city}</p>
+                          <p className="truncate text-xs font-semibold text-gray-800">{company.name}</p>
+                          <p className="truncate text-xs text-gray-500">{company.area ? `${company.area}, ` : ""}{company.city}</p>
                         </div>
                         {company.active_job_count > 0 && (
-                          <span className="shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+                          <span className="shrink-0 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-bold text-green-700">
                             {company.active_job_count}
                           </span>
                         )}
@@ -1261,7 +1261,7 @@ export function MapWorkspace() {
                     );
                   })}
                   {totalCount > leaves.length && (
-                    <p className="px-2 py-1 text-center text-[11.5px] text-gray-400">
+                    <p className="px-2 py-1 text-center text-xs text-gray-500">
                       +{totalCount - leaves.length} more — zoom in to see all
                     </p>
                   )}
@@ -1276,16 +1276,16 @@ export function MapWorkspace() {
       <div className="absolute left-4 right-4 top-4 flex flex-wrap items-center gap-2">
         {/* Search with autocomplete */}
         <div className="relative min-w-[180px] flex-1 sm:max-w-sm" ref={searchRef}>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-400 z-10" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-700 z-10" />
           <Input
             value={searchValue}
             onChange={(e) => handleSearchInput(e.target.value)}
             onFocus={() => searchValue.length >= 2 && setShowSuggestions(true)}
             placeholder="Search job roles — Frontend Engineer, Data Scientist..."
-            className="h-11 rounded-2xl border-gray-100 bg-white/95 pl-9 pr-9 text-sm shadow-[0_2px_12px_rgba(15,23,42,0.08)] backdrop-blur-sm transition-all duration-200 placeholder:text-gray-400 focus:border-green-200 focus:shadow-[0_4px_20px_rgba(34,197,94,0.15)] focus:ring-4 focus:ring-green-400/15"
+            className="h-11 rounded-xl border-gray-100 bg-white/95 pl-9 pr-9 text-sm shadow-[0_2px_8px_rgba(15,23,42,0.06)] backdrop-blur-sm transition-all duration-200 placeholder:text-gray-500 focus:border-green-200 focus:shadow-[0_6px_20px_rgba(22,163,74,0.16)] focus:ring-4 focus:ring-green-400/15"
           />
           {searchValue && (
-            <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 z-10">
+            <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-600 z-10">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -1294,7 +1294,7 @@ export function MapWorkspace() {
               edited. See showSuggestionPanel / showResultsPanel above. */}
           {showSuggestionPanel && suggestions && suggestions.length > 0 && (
             <div
-              className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
+              className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               {suggestions.map((s, i) => (
@@ -1303,12 +1303,12 @@ export function MapWorkspace() {
                   onClick={() => selectSuggestion(s.title)}
                   className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm transition-colors hover:bg-green-50"
                 >
-                  <Search className="h-3.5 w-3.5 shrink-0 text-green-400" />
+                  <Search className="h-3.5 w-3.5 shrink-0 text-green-700" />
                   <span className="text-gray-700">{s.title}</span>
                 </button>
               ))}
               <div className="border-t border-gray-100 bg-gray-50/50 px-3.5 py-2">
-                <span className="text-[11.5px] font-medium text-gray-400">Press Enter to search</span>
+                <span className="text-xs font-medium text-gray-500">Press Enter to search</span>
               </div>
             </div>
           )}
@@ -1316,7 +1316,7 @@ export function MapWorkspace() {
           {/* Job search results dropdown */}
           {showResultsPanel && jobSearchResults && jobSearchResults.length > 0 && (
             <div
-              className="scroll-thin absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
+              className="scroll-thin absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               <div className="sticky top-0 flex items-center gap-1.5 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50/50 px-3.5 py-2.5">
@@ -1325,14 +1325,14 @@ export function MapWorkspace() {
                     viewport while this counts the whole city, so the two
                     numbers legitimately differ — saying which is which stops
                     them reading as a contradiction. */}
-                <span className="text-[11.5px] font-bold uppercase tracking-wider text-green-700">
+                <span className="text-xs font-bold uppercase tracking-wider text-green-700">
                   {jobSearchResults.length} companies hiring in {selectedCity}
                 </span>
                 <button
                   type="button"
                   aria-label="Close search results"
                   onClick={() => setSearchDismissed(true)}
-                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-green-700/60 transition-colors hover:bg-white hover:text-green-800"
+                  className="ml-auto flex h-5 w-5 items-center justify-center rounded-full text-green-700 transition-colors hover:bg-white hover:text-green-800"
                 >
                   <X className="h-3 w-3" aria-hidden="true" />
                 </button>
@@ -1352,32 +1352,32 @@ export function MapWorkspace() {
                   }}
                   className="flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors hover:bg-green-50/70 border-b border-gray-50 last:border-0"
                 >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 text-[12.5px] font-bold text-green-700 shadow-sm">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 text-xs font-bold text-green-700 shadow-sm">
                     {getInitials(r.company_name)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[13px] font-semibold text-gray-900 truncate">{r.company_name}</span>
-                      {r.sector && <span className="rounded bg-gray-100 px-1 py-0.5 text-[8px] font-bold text-gray-500 uppercase">{r.sector}</span>}
+                      <span className="text-sm font-semibold text-gray-900 truncate">{r.company_name}</span>
+                      {r.sector && <span className="rounded-md bg-gray-100 px-1 py-0.5 text-xs font-bold text-gray-500 uppercase">{r.sector}</span>}
                     </div>
-                    <div className="mt-0.5 flex items-center gap-1 text-[11.5px] text-gray-400">
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
                       {r.area && <span>{r.area}</span>}
                       {r.area && r.city && <span>·</span>}
                       <span>{r.city}</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {r.matching_jobs.slice(0, 3).map((j) => (
-                        <span key={j.id} className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <span key={j.id} className="inline-flex items-center gap-1 rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">
                           {j.title}
-                          {j.source && <span className="text-[7px] text-green-500">via {jobSourceLabel(j.source)}</span>}
+                          {j.source && <span className="text-xs text-green-700">via {jobSourceLabel(j.source)}</span>}
                         </span>
                       ))}
                       {r.matching_jobs.length > 3 && (
-                        <span className="text-[10px] text-gray-400">+{r.matching_jobs.length - 3} more</span>
+                        <span className="text-xs text-gray-500">+{r.matching_jobs.length - 3} more</span>
                       )}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                  <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
                     {r.matching_jobs.length} role{r.matching_jobs.length !== 1 ? 's' : ''}
                   </span>
                 </button>
@@ -1387,12 +1387,12 @@ export function MapWorkspace() {
 
           {showResultsPanel && jobSearchResults && jobSearchResults.length === 0 && (
             <div
-              className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-gray-100 bg-white p-5 text-center shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
+              className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-gray-100 bg-white p-5 text-center shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               <Search className="mx-auto h-5 w-5 text-gray-200" />
               <p className="mt-2 text-xs font-medium text-gray-500">No jobs found for &quot;{searchQuery}&quot;</p>
-              <p className="mt-0.5 text-[11.5px] text-gray-400">Try a different role or skill</p>
+              <p className="mt-0.5 text-xs text-gray-500">Try a different role or skill</p>
             </div>
           )}
         </div>
@@ -1404,22 +1404,22 @@ export function MapWorkspace() {
             onClick={() => setCityDropdownOpen(!cityDropdownOpen)}
             className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-lg transition-all hover:shadow-xl"
           >
-            <MapPin className="h-4 w-4 text-green-500" />
+            <MapPin className="h-4 w-4 text-green-700" />
             <span className="text-gray-800">{selectedCity}</span>
             {(() => {
               const cc = (cities ?? []).find(c => c.city === selectedCity);
               return cc ? (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11.5px] font-bold text-green-700">{cc.count}</span>
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">{cc.count}</span>
               ) : null;
             })()}
-            <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", cityDropdownOpen && "rotate-180")} />
+            <ChevronDown className={cn("h-4 w-4 text-gray-500 transition-transform", cityDropdownOpen && "rotate-180")} />
           </button>
           {cityDropdownOpen && (
             <div className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               <div className="border-b border-gray-50 px-4 py-2.5">
-                <span className="text-[11.5px] font-bold uppercase tracking-wider text-gray-400">Select City</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Select City</span>
               </div>
               {(cities ?? []).map((c) => (
                 <button
@@ -1434,7 +1434,7 @@ export function MapWorkspace() {
                   )}
                 >
                   <div className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg text-[12.5px] font-bold",
+                    "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold",
                     selectedCity === c.city
                       ? "bg-green-500 text-white"
                       : "bg-gray-100 text-gray-500"
@@ -1442,10 +1442,10 @@ export function MapWorkspace() {
                     <MapPin className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={cn("text-[13px] font-semibold", selectedCity === c.city ? "text-green-700" : "text-gray-800")}>
+                    <div className={cn("text-sm font-semibold", selectedCity === c.city ? "text-green-700" : "text-gray-800")}>
                       {c.city}
                     </div>
-                    <div className="text-[11.5px] text-gray-400">{c.count} companies</div>
+                    <div className="text-xs text-gray-500">{c.count} companies</div>
                   </div>
                   {selectedCity === c.city && (
                     <div className="h-2 w-2 rounded-full bg-green-500" />
@@ -1515,7 +1515,7 @@ export function MapWorkspace() {
             <Filter className="h-4 w-4" />
             <span className="hidden sm:inline">Filters</span>
             {activeFilterCount > 0 && (
-              <span className={cn("rounded-full px-1.5 py-0.5 text-[11px] font-bold", mobileFiltersOpen ? "bg-white/20" : "bg-green-500 text-white")}>
+              <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold", mobileFiltersOpen ? "bg-white/20" : "bg-green-500 text-white")}>
                 {activeFilterCount}
               </span>
             )}
@@ -1544,7 +1544,7 @@ export function MapWorkspace() {
         {/* Status */}
         {isLoading && (
           <div className="hidden items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-medium text-gray-500 shadow-lg sm:flex">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-green-500" /> Loading…
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-green-700" /> Loading…
           </div>
         )}
         {isError && (
@@ -1559,11 +1559,11 @@ export function MapWorkspace() {
         {!isLoading && !isError && filteredCompanies && (
           <div className="hidden items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-xs font-semibold shadow-lg sm:flex">
             {searchQuery && (
-              <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+              <span className="rounded-md bg-green-100 px-1.5 py-0.5 text-xs font-bold text-green-700">
                 &quot;{searchQuery}&quot;
               </span>
             )}
-            <Building2 className="h-3.5 w-3.5 text-green-500" />
+            <Building2 className="h-3.5 w-3.5 text-green-700" />
             {/* A capped view shows "500+" and asks for a zoom. Without the
                 marker the number reads as the true total and a user has no
                 way to know they're seeing a clipped slice of the map. */}
@@ -1594,7 +1594,7 @@ export function MapWorkspace() {
               <button
                 type="button"
                 onClick={() => mapRef.current?.zoomIn({ duration: 300 })}
-                className="flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 transition-colors hover:bg-amber-100"
+                className="flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100"
               >
                 <Plus className="h-3 w-3" aria-hidden="true" />
                 zoom in for more
@@ -1602,8 +1602,8 @@ export function MapWorkspace() {
             )}
             {hiringCount > 0 && (
               <>
-                <span className="text-gray-200">|</span>
-                <span className="flex items-center gap-1 text-green-600">
+                <span className="text-gray-500">|</span>
+                <span className="flex items-center gap-1 text-green-700">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                   {hiringCount} hiring
                 </span>
@@ -1622,7 +1622,7 @@ export function MapWorkspace() {
           // assistive tech announcing three indistinguishable "button"s.
           aria-label="Zoom in"
           title="Zoom in"
-          className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
+          className="flex h-9 w-9 items-center justify-center text-gray-500 transition hover:bg-green-50 hover:text-green-700"
           onClick={() => mapRef.current?.zoomIn({ duration: 200 })}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -1632,7 +1632,7 @@ export function MapWorkspace() {
           type="button"
           aria-label="Zoom out"
           title="Zoom out"
-          className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
+          className="flex h-9 w-9 items-center justify-center text-gray-500 transition hover:bg-green-50 hover:text-green-700"
           onClick={() => mapRef.current?.zoomOut({ duration: 200 })}
         >
           <Minus className="h-4 w-4" aria-hidden="true" />
@@ -1642,13 +1642,13 @@ export function MapWorkspace() {
           type="button"
           aria-label={`Centre the map on ${selectedCity}`}
           title={`Centre the map on ${selectedCity}`}
-          className="flex h-9 w-9 items-center justify-center text-gray-400 transition hover:bg-green-50 hover:text-green-600"
+          className="flex h-9 w-9 items-center justify-center text-gray-500 transition hover:bg-green-50 hover:text-green-700"
           onClick={() => {
             const c = getCityCenter(selectedCity);
             mapRef.current?.flyTo({ center: [c.longitude, c.latitude], zoom: c.zoom, duration: 600 });
           }}
         >
-          <Compass className="h-4 w-4" aria-hidden="true" />
+          <LocateFixed className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
       )}
@@ -1663,15 +1663,15 @@ export function MapWorkspace() {
         <div className="absolute bottom-8 left-4 z-20 flex flex-col items-start gap-2">
           {legendOpen && (
             <div
-              className="w-60 rounded-2xl border border-gray-100 bg-white/95 p-3.5 text-[11.5px] shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm"
+              className="w-60 rounded-xl border border-gray-100 bg-white/95 p-3.5 text-xs shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
-              <p className="mb-2.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500">
                 What the pins mean
               </p>
               <ul className="flex flex-col gap-2 text-gray-600">
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-[8px] font-bold text-white">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-xs font-bold text-white">
                     A
                   </span>
                   <span>
@@ -1680,7 +1680,7 @@ export function MapWorkspace() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-300 text-[8px] font-bold text-white">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-300 text-xs font-bold text-white">
                     A
                   </span>
                   <span>
@@ -1689,7 +1689,7 @@ export function MapWorkspace() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 shrink-0 rounded bg-emerald-500 px-1 py-0.5 text-[7px] font-bold text-white">
+                  <span className="mt-0.5 shrink-0 rounded-md bg-emerald-500 px-1 py-0.5 text-xs font-bold text-white">
                     NEW
                   </span>
                   <span>
@@ -1697,7 +1697,7 @@ export function MapWorkspace() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-100 text-[8px] font-bold text-green-700">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">
                     12
                   </span>
                   <span>
@@ -1706,7 +1706,7 @@ export function MapWorkspace() {
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-[8px] text-white">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs text-white">
                     <MapPin className="h-2.5 w-2.5" aria-hidden="true" />
                   </span>
                   <span>
@@ -1722,9 +1722,9 @@ export function MapWorkspace() {
             onClick={() => setLegendOpen((v) => !v)}
             aria-expanded={legendOpen}
             aria-label={legendOpen ? "Hide map legend" : "Show map legend"}
-            className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-[11.5px] font-semibold text-gray-600 shadow-lg transition-colors hover:text-green-700"
+            className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600 shadow-lg transition-colors hover:text-green-700"
           >
-            <Layers className="h-3.5 w-3.5 text-green-500" aria-hidden="true" />
+            <Layers className="h-3.5 w-3.5 text-green-700" aria-hidden="true" />
             {legendOpen ? "Hide legend" : "Legend"}
           </button>
         </div>
@@ -1740,7 +1740,7 @@ export function MapWorkspace() {
       )}
       <div
         className={cn(
-          "scroll-thin z-50 overflow-y-auto rounded-2xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)]",
+          "scroll-thin z-50 overflow-y-auto rounded-xl border border-gray-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.14)]",
           "fixed inset-x-3 bottom-3 max-h-[75vh]",
           "md:absolute md:inset-x-auto md:bottom-auto md:left-4 md:top-20 md:z-30 md:w-56 md:max-h-[calc(100%-100px)]",
           mobileFiltersOpen ? "block" : "hidden"
@@ -1750,11 +1750,11 @@ export function MapWorkspace() {
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-green-50 bg-white/95 px-4 py-3 backdrop-blur-sm">
           <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-green-100 to-emerald-100">
-            <Filter className="h-3.5 w-3.5 text-green-600" />
+            <Filter className="h-3.5 w-3.5 text-green-700" />
           </div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Filters</h3>
           {activeFilterCount > 0 && (
-            <span className="rounded-full bg-green-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            <span className="rounded-full bg-green-500 px-1.5 py-0.5 text-xs font-bold text-white">
               {activeFilterCount}
             </span>
           )}
@@ -1762,7 +1762,7 @@ export function MapWorkspace() {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="ml-auto text-[11.5px] font-semibold text-gray-400 transition-colors hover:text-red-500"
+              className="ml-auto text-xs font-semibold text-gray-500 transition-colors hover:text-red-500"
             >
               Clear all
             </button>
@@ -1799,10 +1799,10 @@ export function MapWorkspace() {
 
         {/* Type */}
         <div className="px-3 pb-2 pt-3">
-          <span className="px-1 text-[11.5px] font-bold uppercase tracking-widest text-green-500">Type</span>
+          <span className="px-1 text-xs font-bold uppercase tracking-widest text-green-700">Type</span>
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedType(null)}
-              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                 selectedType === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Blocks className="h-3.5 w-3.5" />
@@ -1812,12 +1812,12 @@ export function MapWorkspace() {
               const Icon = t.type === "Startup" ? Rocket : t.type === "Growth" ? TrendingUp : t.type === "Public" ? Landmark : Building;
               return (
                 <button key={t.type} type="button" onClick={() => setSelectedType(selectedType === t.type ? null : t.type)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                     selectedType === t.type ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <Icon className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">{t.type}</span>
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold",
                     selectedType === t.type ? "bg-white/20" : "bg-gray-100 text-gray-500"
                   )}>{t.count}</span>
                 </button>
@@ -1829,10 +1829,10 @@ export function MapWorkspace() {
 
         {/* Stage */}
         <div className="px-3 py-3">
-          <span className="px-1 text-[11.5px] font-bold uppercase tracking-widest text-green-500">Stage</span>
+          <span className="px-1 text-xs font-bold uppercase tracking-widest text-green-700">Stage</span>
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedStage(null)}
-              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                 selectedStage === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Blocks className="h-3.5 w-3.5" />
@@ -1842,12 +1842,12 @@ export function MapWorkspace() {
               const Icon = s.stage === "Seed" ? Sprout : s.stage.startsWith("Series") ? CircleDollarSign : s.stage === "Growth" ? TrendingUp : Landmark;
               return (
                 <button key={s.stage} type="button" onClick={() => setSelectedStage(selectedStage === s.stage ? null : s.stage)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                     selectedStage === s.stage ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <Icon className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">{s.stage}</span>
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold",
                     selectedStage === s.stage ? "bg-white/20" : "bg-gray-100 text-gray-500"
                   )}>{s.count}</span>
                 </button>
@@ -1860,16 +1860,16 @@ export function MapWorkspace() {
 
         {/* Area */}
         <div className="px-3 py-3">
-          <span className="px-1 text-[11.5px] font-bold uppercase tracking-widest text-green-500">Area</span>
+          <span className="px-1 text-xs font-bold uppercase tracking-widest text-green-700">Area</span>
           <div className="mt-1.5 flex flex-col gap-0.5">
             {areas?.map((a) => (
               <button key={a.area} type="button" onClick={() => setSelectedArea(selectedArea === a.area ? null : a.area)}
-                className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                   selectedArea === a.area ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                 )}>
                 <MapPinned className="h-3.5 w-3.5" />
                 <span className="flex-1 text-left">{a.area}</span>
-                <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
+                <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold",
                   selectedArea === a.area ? "bg-white/20" : "bg-gray-100 text-gray-500"
                 )}>{a.count}</span>
               </button>
@@ -1881,10 +1881,10 @@ export function MapWorkspace() {
 
         {/* Sector */}
         <div className="px-3 py-3">
-          <span className="px-1 text-[11.5px] font-bold uppercase tracking-widest text-green-500">Sector</span>
+          <span className="px-1 text-xs font-bold uppercase tracking-widest text-green-700">Sector</span>
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedSector(null)}
-              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                 selectedSector === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Factory className="h-3.5 w-3.5" />
@@ -1895,12 +1895,12 @@ export function MapWorkspace() {
               const cfg = getSectorConfig(s.sector) ?? DEFAULT_SECTOR;
               return (
                 <button key={s.sector} type="button" onClick={() => setSelectedSector(active ? null : s.sector)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                     active ? "bg-green-600 font-semibold text-white" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <span className="h-3 w-3 rounded-full border-2" style={{ borderColor: cfg.color, background: active ? "white" : `${cfg.color}20` }} />
                   <span className="flex-1 text-left">{s.sector}</span>
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold",
                     active ? "bg-white/20" : "bg-gray-100 text-gray-500"
                   )}>{s.count}</span>
                 </button>
@@ -1914,10 +1914,10 @@ export function MapWorkspace() {
             for (Engineering, Data & AI, HR & Recruiting, etc.), not the
             company's industry. */}
         <div className="border-t border-gray-50 px-3 py-3">
-          <span className="px-1 text-[11.5px] font-bold uppercase tracking-widest text-green-500">Hiring for</span>
+          <span className="px-1 text-xs font-bold uppercase tracking-widest text-green-700">Hiring for</span>
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedDepartment(null)}
-              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                 selectedDepartment === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Layers className="h-3.5 w-3.5" />
@@ -1927,11 +1927,11 @@ export function MapWorkspace() {
               const active = selectedDepartment === d.department;
               return (
                 <button key={d.department} type="button" onClick={() => setSelectedDepartment(active ? null : d.department)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all",
                     active ? "bg-green-600 font-semibold text-white" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <span className="flex-1 text-left">{d.department}</span>
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",
+                  <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold",
                     active ? "bg-white/20" : "bg-gray-100 text-gray-500"
                   )}>{d.count}</span>
                 </button>
@@ -1943,7 +1943,7 @@ export function MapWorkspace() {
       </div>
 
       {/* ── Attribution ── */}
-      <div className="absolute bottom-2 right-2 text-[11.5px] text-gray-400">
+      <div className="absolute bottom-2 right-2 text-xs text-gray-500">
         MapLibre | © CARTO | © OpenStreetMap
       </div>
     </div>

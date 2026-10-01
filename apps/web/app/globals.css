@@ -40,6 +40,14 @@ body {
   border-color: var(--color-border);
 }
 
+/* Visible keyboard focus for every interactive control. The app previously
+   relied on browser defaults, which are invisible against the white pills
+   and map controls, so keyboard users could not see where they were. */
+:where(a, button, [role="button"], [role="menuitem"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Thin scrollbar */
 .scroll-thin::-webkit-scrollbar {
   width: 5px;

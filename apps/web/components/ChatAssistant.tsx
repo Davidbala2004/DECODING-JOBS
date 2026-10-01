@@ -98,9 +98,9 @@ function JobResultCard({ job }: { job: ChatJobResult }) {
         setSelectedCompanyId(job.company_id);
         router.push("/");
       }}
-      className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.12)]"
+      className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.16)]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-xs font-bold text-green-700">
         {logo ? (
           <img src={logo} alt={job.company_name} className="h-full w-full object-contain p-1" />
         ) : (
@@ -108,11 +108,11 @@ function JobResultCard({ job }: { job: ChatJobResult }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[12.5px] font-bold text-gray-900">{job.title}</p>
-        <p className="truncate text-[12.5px] text-gray-500">{job.company_name}</p>
+        <p className="truncate text-xs font-bold text-gray-900">{job.title}</p>
+        <p className="truncate text-xs text-gray-500">{job.company_name}</p>
       </div>
       {job.city && (
-        <span className="flex shrink-0 items-center gap-0.5 text-[11.5px] text-gray-400">
+        <span className="flex shrink-0 items-center gap-0.5 text-xs text-gray-500">
           <MapPin className="h-2.5 w-2.5" />
           {job.city}
         </span>
@@ -133,9 +133,9 @@ function CompanyResultCard({ company }: { company: ChatCompanyResult }) {
         setSelectedCompanyId(company.id);
         router.push("/");
       }}
-      className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.12)]"
+      className="flex w-full items-center gap-2.5 rounded-xl border border-gray-100 bg-white p-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-green-200 hover:shadow-[0_6px_20px_rgba(22,163,74,0.16)]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-[12.5px] font-bold text-green-700">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 text-xs font-bold text-green-700">
         {logo ? (
           <img src={logo} alt={company.name} className="h-full w-full object-contain p-1" />
         ) : (
@@ -143,11 +143,11 @@ function CompanyResultCard({ company }: { company: ChatCompanyResult }) {
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
-        <p className="truncate text-[12.5px] text-gray-500">{company.sector || "—"} · {company.city || "—"}</p>
+        <p className="truncate text-xs font-bold text-gray-900">{company.name}</p>
+        <p className="truncate text-xs text-gray-500">{company.sector || "—"} · {company.city || "—"}</p>
       </div>
       {company.active_job_count > 0 && (
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11.5px] font-bold text-green-700">
+        <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-bold text-green-700">
           <Briefcase className="h-2.5 w-2.5" />
           {company.active_job_count}
         </span>
@@ -366,7 +366,7 @@ export function ChatAssistant({
           <div className="relative" ref={resumeMenuRef}>
             {/* Two sibling buttons, not a button nested in a button — the
                 latter is invalid HTML and trips React's hydration checks. */}
-            <div className="flex items-center gap-0.5 rounded-full bg-green-50 text-[12.5px] font-semibold text-green-700">
+            <div className="flex items-center gap-0.5 rounded-full bg-green-50 text-xs font-semibold text-green-700">
               <button
                 type="button"
                 onClick={() => setResumeMenuOpen((v) => !v)}
@@ -391,7 +391,7 @@ export function ChatAssistant({
             </div>
             {resumeMenuOpen && (resumes?.length ?? 0) > 1 && (
               <div
-                className="absolute bottom-full left-0 z-20 mb-1.5 w-56 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-[0_12px_32px_rgba(15,23,42,0.14)]"
+                className="absolute bottom-full left-0 z-20 mb-1.5 w-56 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-[0_12px_40px_rgba(15,23,42,0.14)]"
                 style={{ animation: "panelFadeIn 0.15s ease-out" }}
               >
                 {resumes?.map((r) => (
@@ -403,7 +403,7 @@ export function ChatAssistant({
                       setResumeMenuOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12.5px] transition-colors",
+                      "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors",
                       r.id === activeResumeId ? "bg-green-50 font-semibold text-green-700" : "text-gray-600 hover:bg-gray-50"
                     )}
                   >
@@ -437,7 +437,7 @@ export function ChatAssistant({
           onClick={() => fileInputRef.current?.click()}
           disabled={isBusy}
           title="Attach your resume"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-400 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-600 disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700 disabled:opacity-40"
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -445,12 +445,12 @@ export function ChatAssistant({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about jobs, companies, or interview prep…"
-          className="h-11 flex-1 rounded-2xl border border-gray-200 bg-gray-50/60 px-4 text-sm outline-none transition-all focus:border-green-300 focus:bg-white focus:ring-4 focus:ring-green-400/15"
+          className="h-11 flex-1 rounded-xl border border-gray-200 bg-gray-50/60 px-4 text-sm outline-none transition-all focus:border-green-300 focus:bg-white focus:ring-4 focus:ring-green-400/15"
         />
         <button
           type="submit"
           disabled={isBusy || !input.trim()}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/20 transition-all hover:shadow-lg active:scale-95 disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/20 transition-all hover:shadow-lg active:scale-95 disabled:opacity-40"
         >
           {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
@@ -502,11 +502,11 @@ export function ChatAssistant({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">AI Job Search Assistant</p>
           {contextJob ? (
-            <p className="truncate text-[12.5px] text-green-600">
+            <p className="truncate text-xs text-green-700">
               Prepping for {contextJob.title} @ {contextJob.company.name}
             </p>
           ) : (
-            <p className="truncate text-[12.5px] text-gray-400">Ask about real jobs, companies, or interview prep</p>
+            <p className="truncate text-xs text-gray-500">Ask about real jobs, companies, or interview prep</p>
           )}
         </div>
         {hasStarted && (
@@ -526,12 +526,12 @@ export function ChatAssistant({
         // Claude/ChatGPT-style empty state: greeting + composer centered together.
         <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-24" style={{ animation: "heroFadeIn 0.35s ease-out both" }}>
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
-              <BloomIcon className="h-7 w-7 text-green-500" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
+              <BloomIcon className="h-7 w-7 text-green-700" />
             </div>
             <div>
               <p className="text-base font-semibold text-gray-900">What are you looking for?</p>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-gray-500">
                 Ask about real jobs and companies, or attach your resume for feedback.
               </p>
             </div>
@@ -572,9 +572,9 @@ export function ChatAssistant({
                   <div className={cn("flex flex-col gap-2", turn.role === "user" ? "max-w-[85%] items-end" : "max-w-[95%]")}>
                     <div
                       className={cn(
-                        "rounded-2xl px-3.5 py-2.5 shadow-sm",
+                        "rounded-xl px-3.5 py-2.5 shadow-sm",
                         turn.role === "user"
-                          ? "whitespace-pre-wrap bg-green-600 text-[13px] leading-relaxed text-white"
+                          ? "whitespace-pre-wrap bg-green-600 text-sm leading-relaxed text-white"
                           : "border border-gray-100 bg-white text-gray-700"
                       )}
                     >
@@ -604,7 +604,7 @@ export function ChatAssistant({
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white">
                     <BloomIcon className="h-3.5 w-3.5" />
                   </div>
-                  <div className="flex items-center gap-1 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-1 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
                     {[0, 1, 2].map((i) => (
                       <span
                         key={i}

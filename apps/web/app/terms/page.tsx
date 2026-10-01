@@ -18,9 +18,9 @@ export default function TermsPage() {
       <main className="scroll-thin flex-1 overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
         <article className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Terms of Service</h1>
-          <p className="mt-1.5 text-sm text-gray-400">Last updated: 1 October 2026</p>
+          <p className="mt-1.5 text-sm text-gray-500">Last updated: 1 October 2026</p>
 
-          <div className="mt-8 flex flex-col gap-6 text-[13.5px] leading-relaxed text-gray-600">
+          <div className="mt-8 flex flex-col gap-6 text-sm leading-relaxed text-gray-600">
             <section>
               <h2 className="mb-1.5 text-sm font-bold text-gray-900">Using the service</h2>
               <p>
@@ -67,7 +67,7 @@ export default function TermsPage() {
               <h2 className="mb-1.5 text-sm font-bold text-gray-900">Ending your use</h2>
               <p>
                 You can delete your account at any time from{" "}
-                <a href="/profile" className="font-semibold text-green-600 hover:underline">your preferences page</a>.
+                <a href="/profile" className="font-semibold text-green-700 hover:underline">your preferences page</a>.
                 We may suspend accounts that break these terms.
               </p>
             </section>

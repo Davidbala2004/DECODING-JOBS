@@ -45,8 +45,8 @@ const WORK_MODES: { value: WorkMode; label: string }[] = [
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <label className="mb-1.5 block text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
-      {children} {required && <span className="text-green-500">*</span>}
+    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">
+      {children} {required && <span className="text-green-700">*</span>}
     </label>
   );
 }
@@ -54,7 +54,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 const selectCls =
   "flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
 const textareaCls =
-  "flex w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
+  "flex w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40";
 
 function MoreDetailsToggle({
   open,
@@ -69,7 +69,7 @@ function MoreDetailsToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-1.5 self-start text-[12px] font-bold text-green-600 transition-colors hover:text-green-700"
+      className="flex items-center gap-1.5 self-start text-xs font-bold text-green-700 transition-colors hover:text-green-700"
     >
       {open ? <ChevronDown className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
       {label}
@@ -168,7 +168,7 @@ function RegisterForm({ email }: { email: string }) {
       `}</style>
       {/* Header */}
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-green-600">
           <Rocket className="h-6 w-6 text-white" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">List your startup</h1>
@@ -179,14 +179,14 @@ function RegisterForm({ email }: { email: string }) {
       </div>
 
       {/* Step indicator */}
-      <div className="mb-6 flex items-center justify-center gap-2 text-[12.5px] font-bold uppercase tracking-wide text-gray-400">
-        <span className={cn("flex items-center gap-1", step !== "company" && "text-green-600")}>
+      <div className="mb-6 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+        <span className={cn("flex items-center gap-1", step !== "company" && "text-green-700")}>
           <span className={cn("flex h-5 w-5 items-center justify-center rounded-full", step !== "company" ? "bg-green-500 text-white" : "bg-gray-900 text-white")}>1</span>
           Company
         </span>
         <span className="h-px w-6 bg-gray-200" />
-        <span className={cn("flex items-center gap-1", step === "role" && "text-gray-900", step === "done" && "text-green-600")}>
-          <span className={cn("flex h-5 w-5 items-center justify-center rounded-full", step === "role" ? "bg-gray-900 text-white" : step === "done" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-400")}>2</span>
+        <span className={cn("flex items-center gap-1", step === "role" && "text-gray-900", step === "done" && "text-green-700")}>
+          <span className={cn("flex h-5 w-5 items-center justify-center rounded-full", step === "role" ? "bg-gray-900 text-white" : step === "done" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500")}>2</span>
           First role
         </span>
       </div>
@@ -194,15 +194,15 @@ function RegisterForm({ email }: { email: string }) {
       {step === "company" && (
         <form
           onSubmit={(e) => { e.preventDefault(); companyMutation.mutate(); }}
-          className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]"
+          className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
         >
           <div>
             <FieldLabel>Verifying as</FieldLabel>
             <div className="flex items-center gap-2 rounded-lg border border-green-100 bg-green-50/60 px-3 py-2.5">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700" />
               <span className="truncate text-sm font-semibold text-green-800">{email}</span>
             </div>
-            <p className="mt-1 text-[12px] text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               Your email domain must match your company&apos;s website — that&apos;s how we verify it&apos;s really yours.
               Sign in with a different address if this isn&apos;t your work email.
             </p>
@@ -273,9 +273,9 @@ function RegisterForm({ email }: { email: string }) {
                 <FieldLabel>Exact longitude</FieldLabel>
                 <Input type="number" step="any" placeholder="77.6412" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
               </div>
-              <p className="col-span-2 -mt-2 text-[12px] text-gray-400">
+              <p className="col-span-2 -mt-2 text-xs text-gray-500">
                 Right-click your office on{" "}
-                <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-green-600 underline">
+                <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-green-700 underline">
                   Google Maps
                 </a>{" "}
                 and copy the coordinates shown at the top. Skip this and we&apos;ll place your pin near the
@@ -305,7 +305,7 @@ function RegisterForm({ email }: { email: string }) {
           )}
 
           {companyMutation.isError && (
-            <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-[12px] text-red-600">
+            <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-xs text-red-600">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {(companyMutation.error as Error).message}
             </div>
@@ -327,14 +327,14 @@ function RegisterForm({ email }: { email: string }) {
 
       {step === "role" && company && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-[13px] font-semibold text-green-700">
+          <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             {company.name} is live on the map. Now add your first open role.
           </div>
 
           <form
             onSubmit={(e) => { e.preventDefault(); jobMutation.mutate(); }}
-            className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]"
+            className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
           >
             <div>
               <FieldLabel required>Job title</FieldLabel>
@@ -389,7 +389,7 @@ function RegisterForm({ email }: { email: string }) {
             )}
 
             {jobMutation.isError && (
-              <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-[12px] text-red-600">
+              <div className="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-xs text-red-600">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {(jobMutation.error as Error).message}
               </div>
@@ -420,9 +420,9 @@ function RegisterForm({ email }: { email: string }) {
       )}
 
       {step === "done" && company && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50">
-            <CheckCircle2 className="h-7 w-7 text-green-500" />
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-100 bg-white p-8 text-center shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-green-50">
+            <CheckCircle2 className="h-7 w-7 text-green-700" />
           </div>
           <div>
             <p className="text-base font-bold text-gray-900">{company.name} is hiring on DECODING JOBS</p>

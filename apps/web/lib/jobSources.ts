@@ -18,23 +18,23 @@ export interface JobSourceBadge {
   cls: string;
 }
 
-const NEUTRAL = "rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600";
+const NEUTRAL = "rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-bold text-gray-600";
 
 export const JOB_SOURCE_BADGES: Record<string, JobSourceBadge> = {
-  adzuna: { label: "Adzuna", cls: "rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700" },
-  greenhouse: { label: "Greenhouse", cls: "rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700" },
-  lever: { label: "Lever", cls: "rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-600" },
+  adzuna: { label: "Adzuna", cls: "rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-700" },
+  greenhouse: { label: "Greenhouse", cls: "rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-bold text-emerald-700" },
+  lever: { label: "Lever", cls: "rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-bold text-purple-600" },
   careers: { label: "Careers page", cls: NEUTRAL },
   // See the module docstring — this is a mislabel upstream, not a LinkedIn job.
   linkedin: { label: "Company site", cls: NEUTRAL },
   manual: { label: "Company added", cls: NEUTRAL },
   founder: { label: "Company added", cls: NEUTRAL },
-  indeed: { label: "Indeed", cls: "rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700" },
-  glassdoor: { label: "Glassdoor", cls: "rounded-md bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-green-700" },
-  naukri: { label: "Naukri", cls: "rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600" },
-  internshala: { label: "Internshala", cls: "rounded-md bg-yellow-50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-700" },
-  foundit: { label: "Foundit", cls: "rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600" },
-  wellfound: { label: "Wellfound", cls: "rounded-md bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-600" },
+  indeed: { label: "Indeed", cls: "rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-700" },
+  glassdoor: { label: "Glassdoor", cls: "rounded-md bg-green-50 px-1.5 py-0.5 text-xs font-bold text-green-700" },
+  naukri: { label: "Naukri", cls: "rounded-md bg-indigo-50 px-1.5 py-0.5 text-xs font-bold text-indigo-600" },
+  internshala: { label: "Internshala", cls: "rounded-md bg-yellow-50 px-1.5 py-0.5 text-xs font-bold text-yellow-700" },
+  foundit: { label: "Foundit", cls: "rounded-md bg-orange-50 px-1.5 py-0.5 text-xs font-bold text-orange-600" },
+  wellfound: { label: "Wellfound", cls: "rounded-md bg-purple-50 px-1.5 py-0.5 text-xs font-bold text-purple-600" },
 };
 
 /** Human-readable name for a source value; unknown values pass through with

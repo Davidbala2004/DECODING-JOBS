@@ -43,7 +43,7 @@ export function formatExperience(years: number | null): string {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-[12.5px] font-bold uppercase tracking-wide text-gray-500">{children}</label>;
+  return <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">{children}</label>;
 }
 
 function LinkField({
@@ -61,13 +61,13 @@ function LinkField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4 shrink-0 text-gray-400" />
+      <Icon className="h-4 w-4 shrink-0 text-gray-500" />
       <Input placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="h-9 text-xs" />
       {value && (
         <span
           className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
-            verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"
+            "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold uppercase",
+            verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
           )}
         >
           {verified ? "Verified" : "Unverified"}
@@ -133,23 +133,23 @@ function AccountDataSection() {
   };
 
   return (
-    <section className="mt-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]">
+    <section className="mt-5 rounded-xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
       <h2 className="text-sm font-bold text-gray-900">Your data</h2>
-      <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">
+      <p className="mt-1 text-xs leading-relaxed text-gray-500">
         Download everything this account holds, or permanently delete it. See our{" "}
-        <a href="/privacy" className="font-semibold text-green-600 hover:underline">Privacy Policy</a>{" "}
+        <a href="/privacy" className="font-semibold text-green-700 hover:underline">Privacy Policy</a>{" "}
         and{" "}
-        <a href="/terms" className="font-semibold text-green-600 hover:underline">Terms</a>.
+        <a href="/terms" className="font-semibold text-green-700 hover:underline">Terms</a>.
       </p>
 
-      {error && <p className="mt-2 text-[12.5px] text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
 
       <div className="mt-3.5 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={handleExport}
           disabled={busy !== null}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-[12.5px] font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
         >
           {busy === "export" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           Download my data
@@ -160,7 +160,7 @@ function AccountDataSection() {
           onBlur={() => setConfirming(false)}
           disabled={busy !== null}
           className={cn(
-            "flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12.5px] font-bold transition-all disabled:opacity-50",
+            "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all disabled:opacity-50",
             confirming
               ? "bg-red-600 text-white hover:bg-red-700"
               : "border border-red-200 text-red-600 hover:bg-red-50"
@@ -250,7 +250,7 @@ function ProfileForm({ email }: { email: string }) {
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-green-700" />
       </div>
     );
   }
@@ -259,7 +259,7 @@ function ProfileForm({ email }: { email: string }) {
     <main className="scroll-thin flex-1 overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
       <div className="mx-auto max-w-xl px-4 py-10 sm:py-14">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-green-600">
             <User className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">Your preferences</h1>
@@ -270,7 +270,7 @@ function ProfileForm({ email }: { email: string }) {
 
         <form
           onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
-          className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.06)]"
+          className="flex flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
         >
           <div>
             <FieldLabel>Full name</FieldLabel>
@@ -279,7 +279,7 @@ function ProfileForm({ email }: { email: string }) {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
             />
-            <p className="mt-1 text-[12px] text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               Shown to recruiters when they unlock your profile — defaults to your email if left blank.
             </p>
           </div>
@@ -291,7 +291,7 @@ function ProfileForm({ email }: { email: string }) {
               value={targetRoles}
               onChange={(e) => setTargetRoles(e.target.value)}
             />
-            <p className="mt-1 text-[12px] text-gray-400">Comma-separated</p>
+            <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
           </div>
 
           <div>
@@ -305,7 +305,7 @@ function ProfileForm({ email }: { email: string }) {
                     type="button"
                     onClick={() => toggleCity(city)}
                     className={cn(
-                      "rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all",
+                      "rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
                       active
                         ? "bg-green-600 text-white"
                         : "border border-gray-200 text-gray-500 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
@@ -348,12 +348,12 @@ function ProfileForm({ email }: { email: string }) {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
             />
-            <p className="mt-1 text-[12px] text-gray-400">Comma-separated</p>
+            <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
           </div>
 
           <div className="border-t border-gray-50 pt-4">
-            <p className="mb-2.5 text-[12.5px] font-bold uppercase tracking-wide text-gray-500">
-              Credibility links <span className="font-normal normal-case text-gray-400">— shown to recruiters searching for you</span>
+            <p className="mb-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+              Credibility links <span className="font-normal normal-case text-gray-500">— shown to recruiters searching for you</span>
             </p>
             <div className="flex flex-col gap-2.5">
               <LinkField
@@ -399,10 +399,10 @@ function ProfileForm({ email }: { email: string }) {
               />
             </button>
             <div>
-              <p className="text-[12px] font-semibold text-gray-700">
+              <p className="text-xs font-semibold text-gray-700">
                 Visible to recruiters
               </p>
-              <p className="mt-0.5 text-[12.5px] leading-relaxed text-gray-500">
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
                 {visibleToRecruiters
                   ? "Verified recruiters searching for your target roles can find and unlock this profile. Turn this off to stay hidden from candidate search entirely."
                   : "Your profile is hidden from recruiter search — no company can find or unlock it, even a perfect match."}

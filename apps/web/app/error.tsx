@@ -19,7 +19,7 @@ export default function GlobalError({
       className="flex h-screen w-screen flex-col items-center justify-center gap-4 px-6 text-center"
       style={{ background: "linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)" }}
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/20">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-500/20">
         <AlertTriangle className="h-7 w-7 text-white" />
       </div>
       <h1 className="text-2xl font-bold tracking-tight text-gray-900">Something went wrong</h1>

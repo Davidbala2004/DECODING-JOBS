@@ -91,7 +91,7 @@ export function EmailGate({
         strategy="afterInteractive"
         onReady={() => setGsiReady(true)}
       />
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
+      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
         <svg viewBox="0 0 24 24" className="h-6 w-6">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -105,21 +105,21 @@ export function EmailGate({
             pages (tracker, preferences, candidate search) had no heading at
             all — nothing to announce, nothing to navigate by. */}
         <h1 className="text-sm font-semibold text-gray-900">{title}</h1>
-        <p className="mt-1 max-w-xs text-xs text-gray-400">{subtitle}</p>
+        <p className="mt-1 max-w-xs text-xs text-gray-500">{subtitle}</p>
       </div>
 
       {clientId && (
         <>
           <div ref={buttonRef} className="min-h-[44px]" />
           {googleMutation.isPending && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Signing in…
             </div>
           )}
           {googleMutation.isError && (
             <p className="max-w-xs text-center text-xs text-red-500">{(googleMutation.error as Error).message}</p>
           )}
-          <div className="flex w-full max-w-xs items-center gap-2 text-[11px] text-gray-300">
+          <div className="flex w-full max-w-xs items-center gap-2 text-xs text-gray-500">
             <div className="h-px flex-1 bg-gray-100" />
             or
             <div className="h-px flex-1 bg-gray-100" />
@@ -132,11 +132,11 @@ export function EmailGate({
           <div className="flex items-center gap-1.5 text-sm font-semibold text-green-700">
             <Mail className="h-4 w-4" /> Check your inbox
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             We sent a sign-in link to <span className="font-medium text-gray-600">{email}</span> — it expires in 15 minutes.
           </p>
           {devLink && (
-            <div className="mt-1 flex w-full flex-col gap-1.5 rounded-xl bg-amber-50 px-3.5 py-2.5 text-left text-[11px] text-amber-700">
+            <div className="mt-1 flex w-full flex-col gap-1.5 rounded-xl bg-amber-50 px-3.5 py-2.5 text-left text-xs text-amber-700">
               <div className="flex items-center gap-1.5 font-semibold">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Email isn&apos;t configured yet — dev link:
               </div>

@@ -42,7 +42,7 @@ export function ResponsiveShell() {
       {/* Desktop: floating panel, only when a company is selected. */}
       {isOpen && (
         <div
-          className="absolute bottom-3 right-3 top-3 z-30 hidden w-[380px] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_20px_60px_-12px_rgba(15,23,42,0.35)] lg:block"
+          className="absolute bottom-3 right-3 top-3 z-30 hidden w-[380px] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl lg:block"
           style={{ animation: "panelSlideIn 0.28s cubic-bezier(0.32,0.72,0,1)" }}
         >
           <button

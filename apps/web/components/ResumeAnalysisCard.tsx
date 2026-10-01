@@ -47,12 +47,12 @@ function SuggestionSection({
   if (items.length === 0) return null;
   return (
     <div style={{ animation: `panelFadeIn 0.3s ease-out ${delay}s both` }}>
-      <p className={cn("mb-1.5 flex items-center gap-1 text-[11.5px] font-bold uppercase tracking-wider", labelClassName)}>
+      <p className={cn("mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wider", labelClassName)}>
         <Icon className="h-3 w-3" /> {label}
       </p>
       <ul className="flex flex-col gap-1">
         {items.map((s, i) => (
-          <li key={i} className={cn("rounded-lg px-2.5 py-1.5 text-[12.5px] leading-relaxed text-gray-700", itemClassName)}>
+          <li key={i} className={cn("rounded-lg px-2.5 py-1.5 text-xs leading-relaxed text-gray-700", itemClassName)}>
             {s}
           </li>
         ))}
@@ -64,15 +64,15 @@ function SuggestionSection({
 export function ResumeAnalysisCard({ resume }: { resume: Resume }) {
   return (
     <div
-      className="w-full rounded-2xl border border-gray-100 bg-white p-3.5 shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
+      className="w-full rounded-xl border border-gray-100 bg-white p-3.5 shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
       style={{ animation: "turnFadeIn 0.3s ease-out both" }}
     >
       {resume.ats_score !== null && (
         <div className="flex items-center gap-3">
           <ScoreGauge score={resume.ats_score} />
           <div className="min-w-0 flex-1">
-            <p className="text-[11.5px] font-bold uppercase tracking-wider text-gray-400">ATS Score</p>
-            <p className="mt-0.5 text-[12px] leading-snug text-gray-600">{resume.ats_summary}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">ATS Score</p>
+            <p className="mt-0.5 text-xs leading-snug text-gray-600">{resume.ats_summary}</p>
           </div>
         </div>
       )}
@@ -82,7 +82,7 @@ export function ResumeAnalysisCard({ resume }: { resume: Resume }) {
           <SuggestionSection
             icon={CheckCircle2}
             label="Strengths"
-            labelClassName="text-green-600"
+            labelClassName="text-green-700"
             items={resume.ats_suggestions.strengths}
             itemClassName="bg-green-50/60"
             delay={0.05}
@@ -98,19 +98,19 @@ export function ResumeAnalysisCard({ resume }: { resume: Resume }) {
           <SuggestionSection
             icon={Lightbulb}
             label="Suggestions"
-            labelClassName="text-green-600"
+            labelClassName="text-green-700"
             items={resume.ats_suggestions.suggestions}
             itemClassName="bg-gray-50"
             delay={0.15}
           />
           {resume.ats_suggestions.missing_keywords.length > 0 && (
             <div style={{ animation: "panelFadeIn 0.3s ease-out 0.2s both" }}>
-              <p className="mb-1.5 flex items-center gap-1 text-[11.5px] font-bold uppercase tracking-wider text-gray-500">
+              <p className="mb-1.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-gray-500">
                 <Tag className="h-3 w-3" /> Missing Keywords
               </p>
               <div className="flex flex-wrap gap-1">
                 {resume.ats_suggestions.missing_keywords.map((k, i) => (
-                  <span key={i} className="rounded-full bg-gray-100 px-2 py-0.5 text-[11.5px] font-medium text-gray-500">
+                  <span key={i} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
                     {k}
                   </span>
                 ))}

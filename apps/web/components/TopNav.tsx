@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ListChecks,
-  MapPin,
   Radio,
   Rocket,
   UserCog,
@@ -54,7 +53,7 @@ function NavLink({
       <Icon className="relative h-4 w-4" />
       <span className="relative hidden sm:inline">{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="relative rounded-full bg-green-100 px-1.5 py-0.5 text-[11px] font-bold text-green-700">
+        <span className="relative rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-bold text-green-700">
           {badge}
         </span>
       )}
@@ -121,7 +120,7 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
 
       {open && (
         <div
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-green-100 bg-white shadow-[0_12px_40px_rgba(34,197,94,0.15)]"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-xl border border-green-100 bg-white shadow-[0_6px_20px_rgba(22,163,74,0.16)]"
           style={{ animation: "fadeSlideUp 0.15s ease-out" }}
         >
           <Link
@@ -129,10 +128,10 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
             onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
           >
-            <Rocket className="h-4 w-4 shrink-0 text-green-500" />
+            <Rocket className="h-4 w-4 shrink-0 text-green-700" />
             <div>
               <p className="font-semibold">List your startup</p>
-              <p className="text-[11px] text-gray-400">Get a pin on the map, start hiring</p>
+              <p className="text-xs text-gray-500">Get a pin on the map, start hiring</p>
             </div>
           </Link>
           <div className="h-px bg-green-50" />
@@ -141,10 +140,10 @@ function ForCompaniesMenu({ active }: { active: boolean }) {
             onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
           >
-            <Users2 className="h-4 w-4 shrink-0 text-green-500" />
+            <Users2 className="h-4 w-4 shrink-0 text-green-700" />
             <div>
               <p className="font-semibold">For Recruiters</p>
-              <p className="text-[11px] text-gray-400">Search and unlock candidate profiles</p>
+              <p className="text-xs text-gray-500">Search and unlock candidate profiles</p>
             </div>
           </Link>
         </div>
@@ -218,7 +217,7 @@ function AccountMenu() {
           open ? "bg-green-50 text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
         )}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-[11px] font-bold uppercase text-white">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-xs font-bold uppercase text-white">
           {email.slice(0, 1)}
         </span>
         <ChevronDown className={cn("hidden h-3 w-3 transition-transform sm:block", open && "rotate-180")} />
@@ -227,11 +226,11 @@ function AccountMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 overflow-hidden rounded-2xl border border-green-100 bg-white shadow-[0_12px_40px_rgba(34,197,94,0.15)]"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 overflow-hidden rounded-xl border border-green-100 bg-white shadow-[0_6px_20px_rgba(22,163,74,0.16)]"
           style={{ animation: "fadeSlideUp 0.15s ease-out" }}
         >
           <div className="border-b border-green-50 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Signed in as</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Signed in as</p>
             <p className="truncate text-sm font-semibold text-gray-900" title={email}>
               {email}
             </p>
@@ -242,7 +241,7 @@ function AccountMenu() {
             onClick={() => setOpen(false)}
             className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
           >
-            <UserCog className="h-4 w-4 shrink-0 text-green-500" />
+            <UserCog className="h-4 w-4 shrink-0 text-green-700" />
             Preferences
           </Link>
           <div className="h-px bg-green-50" />
@@ -253,7 +252,7 @@ function AccountMenu() {
             onClick={() => signOut(false)}
             className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
           >
-            <LogOut className="h-4 w-4 shrink-0 text-green-500" />
+            <LogOut className="h-4 w-4 shrink-0 text-green-700" />
             Sign out
           </button>
           <div className="h-px bg-green-50" />
@@ -265,7 +264,7 @@ function AccountMenu() {
             title="Also ends sessions on your other devices"
             className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700 disabled:opacity-50"
           >
-            <ShieldOff className="h-4 w-4 shrink-0 text-green-500" />
+            <ShieldOff className="h-4 w-4 shrink-0 text-green-700" />
             Sign out everywhere
           </button>
         </div>
@@ -291,7 +290,7 @@ export function TopNav() {
 
   return (
     <header
-      className="relative flex h-14 shrink-0 items-center border-b border-emerald-100 px-3 sm:px-6"
+      className="relative flex h-14 shrink-0 items-center border-b border-green-100 px-3 sm:px-6"
       style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" }}
     >
       <style jsx global>{`
@@ -303,11 +302,14 @@ export function TopNav() {
 
       {/* Logo / Brand — doubles as the home/map link */}
       <Link href="/" className="flex items-center gap-2 mr-4 shrink-0 sm:gap-2.5 sm:mr-8">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 shadow-md shadow-green-500/20 transition-transform hover:scale-105">
-          <MapPin className="h-4 w-4 text-white" />
+        {/* Brand mark — deliberately NOT a MapPin. The pin glyph is the city
+            filter and the location rows; reusing it here made the product's
+            own logo read as "a place". A DJ monogram is unmistakably the mark. */}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow-md shadow-green-500/20 transition-transform hover:scale-105">
+          <span className="text-xs font-black leading-none tracking-tight text-white">DJ</span>
         </div>
         <span className="hidden text-sm font-bold tracking-tight text-gray-900 sm:inline">
-          DECODING<span className="text-green-600">JOBS</span>
+          DECODING<span className="text-green-700">JOBS</span>
         </span>
       </Link>
 
@@ -331,7 +333,7 @@ export function TopNav() {
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
         <div className="flex items-center gap-1.5 pl-1" title={liveUpdatesEnabled ? "Live updates on — polling every 15s" : "Live updates off"}>
-          <Radio className={cn("hidden h-3.5 w-3.5 transition-colors sm:block", liveUpdatesEnabled ? "text-green-500" : "text-gray-300")} />
+          <Radio className={cn("hidden h-3.5 w-3.5 transition-colors sm:block", liveUpdatesEnabled ? "text-green-700" : "text-gray-500")} />
           <Switch
             checked={liveUpdatesEnabled}
             onCheckedChange={toggleLiveUpdates}

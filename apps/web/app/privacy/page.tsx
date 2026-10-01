@@ -20,9 +20,9 @@ export default function PrivacyPage() {
       <main className="scroll-thin flex-1 overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
         <article className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Privacy Policy</h1>
-          <p className="mt-1.5 text-sm text-gray-400">Last updated: 1 October 2026</p>
+          <p className="mt-1.5 text-sm text-gray-500">Last updated: 1 October 2026</p>
 
-          <div className="mt-8 flex flex-col gap-6 text-[13.5px] leading-relaxed text-gray-600">
+          <div className="mt-8 flex flex-col gap-6 text-sm leading-relaxed text-gray-600">
             <section>
               <h2 className="mb-1.5 text-sm font-bold text-gray-900">What we collect</h2>
               <ul className="ml-4 list-disc space-y-1">
@@ -57,7 +57,7 @@ export default function PrivacyPage() {
               <p>
                 Sign-in links expire in 15 minutes and sessions in 30 days. You can download everything we hold
                 and permanently delete your account at any time from{" "}
-                <a href="/profile" className="font-semibold text-green-600 hover:underline">your preferences page</a>.
+                <a href="/profile" className="font-semibold text-green-700 hover:underline">your preferences page</a>.
                 Deletion is immediate and removes your profile, resumes, applications, and chat history.
               </p>
             </section>

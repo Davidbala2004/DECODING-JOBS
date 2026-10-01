@@ -73,12 +73,12 @@ export function ChatHistorySidebar({
             )}
           >
             <button type="button" onClick={() => onSelect(c.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-              <MessageSquare className={cn("h-3.5 w-3.5 shrink-0", c.id === selectedId ? "text-green-600" : "text-gray-400")} />
+              <MessageSquare className={cn("h-3.5 w-3.5 shrink-0", c.id === selectedId ? "text-green-700" : "text-gray-500")} />
               <div className="min-w-0 flex-1">
-                <p className={cn("truncate text-[12.5px]", c.id === selectedId ? "font-semibold text-green-800" : "text-gray-700")}>
+                <p className={cn("truncate text-xs", c.id === selectedId ? "font-semibold text-green-800" : "text-gray-700")}>
                   {c.title}
                 </p>
-                <p className="text-[11.5px] text-gray-400">{relativeTime(c.updated_at)}</p>
+                <p className="text-xs text-gray-500">{relativeTime(c.updated_at)}</p>
               </div>
             </button>
             <button
@@ -87,7 +87,7 @@ export function ChatHistorySidebar({
                 e.stopPropagation();
                 deleteMutation.mutate(c.id);
               }}
-              className="shrink-0 rounded-md p-1 text-gray-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+              className="shrink-0 rounded-md p-1 text-gray-500 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
               title="Delete conversation"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -96,7 +96,7 @@ export function ChatHistorySidebar({
         ))}
 
         {conversations?.length === 0 && (
-          <p className="mt-4 px-2 text-center text-[12.5px] text-gray-300">No conversations yet</p>
+          <p className="mt-4 px-2 text-center text-xs text-gray-500">No conversations yet</p>
         )}
       </div>
     </div>

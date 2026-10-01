@@ -14,10 +14,10 @@ function SignInPromo() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50">
-        <Sparkles className="h-5 w-5 text-green-600" />
+        <Sparkles className="h-5 w-5 text-green-700" />
       </div>
-      <p className="text-[13px] font-semibold text-gray-800">Sign in to save your chats</p>
-      <p className="text-[12px] leading-relaxed text-gray-400">
+      <p className="text-sm font-semibold text-gray-800">Sign in to save your chats</p>
+      <p className="text-xs leading-relaxed text-gray-500">
         You can chat right now — sign in to keep conversations across visits and attach a resume.
       </p>
     </div>
