@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Github, Linkedin, Code2, Loader2, Search, ShieldCheck, Users2, LogOut, Clock } from "lucide-react";
+import { Github, Linkedin, Code2, Loader2, Search, ShieldCheck, Users2, LogOut, Clock, User } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -43,14 +43,13 @@ function LinkBadge({ icon: Icon, verified }: { icon: React.ElementType; verified
 }
 
 function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult; onView: () => void }) {
-  const initials = `C${candidate.id}`;
   const verifiedCount = [candidate.github_verified, candidate.linkedin_verified, candidate.leetcode_verified].filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_8px_24px_rgba(15,23,42,0.1)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-xs font-bold text-green-700">
-          {initials}
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-emerald-100 text-green-700">
+          <User className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-gray-900">
@@ -117,7 +116,14 @@ function CandidateCard({ candidate, onView }: { candidate: CandidateSearchResult
 export function CandidateSearchPanel() {
   const email = useIdentityStore((s) => s.email);
   const { companyName, clearRecruiterCompany } = useRecruiterIdentityStore();
+  const [roleInput, setRoleInput] = useState("");
   const [role, setRole] = useState("");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const handleRoleInput = (val: string) => {
+    setRoleInput(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setRole(val), 400);
+  };
   const [city, setCity] = useState("");
   const [workMode, setWorkMode] = useState("");
   const [experienceMin, setExperienceMin] = useState("");
@@ -164,8 +170,8 @@ export function CandidateSearchPanel() {
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-300" />
             <Input
               placeholder="Role or skill (e.g. Backend Engineer, React)"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              value={roleInput}
+              onChange={(e) => handleRoleInput(e.target.value)}
               className="h-9 pl-8 text-xs"
             />
           </div>
