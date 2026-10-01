@@ -117,22 +117,32 @@ interface CityConfig {
   zoom: number;
 }
 
+// Where each city pin flies to. These are the *centroids of that city's
+// company pins*, queried from the database — not the city's nominal centre.
+// The centroid is the point that minimises the distance to every company, so
+// it is the one fixed centre/zoom that frames the most of the city.
+//
+// The distinction matters: Mysuru's civic centre sits ~0.2° south of every
+// Mysuru company on the map, so flying there landed on an empty viewport and
+// the city looked broken. Re-derive these if the underlying coordinates move.
 const CITY_CENTERS: Record<string, CityConfig> = {
-  Bengaluru: { longitude: 77.665, latitude: 12.935, zoom: 11 },
-  Chennai: { longitude: 80.255, latitude: 12.98, zoom: 11 },
-  Hyderabad: { longitude: 78.4867, latitude: 17.385, zoom: 11 },
-  Kochi: { longitude: 76.267, latitude: 9.9312, zoom: 12 },
-  Coimbatore: { longitude: 76.97, latitude: 11.01, zoom: 12 },
-  Thiruvananthapuram: { longitude: 76.9366, latitude: 8.5241, zoom: 12 },
-  Madurai: { longitude: 78.1198, latitude: 9.9252, zoom: 13 },
-  Kozhikode: { longitude: 75.7873, latitude: 11.2588, zoom: 13 },
-  Visakhapatnam: { longitude: 83.2185, latitude: 17.6868, zoom: 12 },
-  Mysuru: { longitude: 76.6394, latitude: 12.2958, zoom: 12 },
-  Mumbai: { longitude: 72.8777, latitude: 19.076, zoom: 11 },
-  Pune: { longitude: 73.8567, latitude: 18.5204, zoom: 11 },
-  "Delhi NCR": { longitude: 77.0266, latitude: 28.4595, zoom: 10 },
-  Kolkata: { longitude: 88.3639, latitude: 22.5726, zoom: 11 },
-  Ahmedabad: { longitude: 72.5714, latitude: 23.0225, zoom: 11 },
+  Bengaluru: { longitude: 77.611, latitude: 12.9658, zoom: 11 },
+  Chennai: { longitude: 80.2469, latitude: 13.0407, zoom: 11 },
+  Hyderabad: { longitude: 78.5, latitude: 17.4024, zoom: 11 },
+  Kochi: { longitude: 76.2521, latitude: 9.9792, zoom: 12 },
+  // Coimbatore's pins span ~0.39° of latitude, which does not fit zoom 12 in a
+  // laptop viewport — it showed a partial city. One step out frames it whole.
+  Coimbatore: { longitude: 77.0896, latitude: 11.0122, zoom: 11 },
+  Thiruvananthapuram: { longitude: 76.9875, latitude: 8.4126, zoom: 12 },
+  Madurai: { longitude: 78.1162, latitude: 9.9119, zoom: 13 },
+  Kozhikode: { longitude: 75.8129, latitude: 11.1728, zoom: 13 },
+  Visakhapatnam: { longitude: 83.2403, latitude: 17.7037, zoom: 12 },
+  Mysuru: { longitude: 76.7599, latitude: 12.5059, zoom: 12 },
+  Mumbai: { longitude: 72.8478, latitude: 19.0146, zoom: 11 },
+  Pune: { longitude: 73.8528, latitude: 18.508, zoom: 11 },
+  "Delhi NCR": { longitude: 76.9978, latitude: 28.3576, zoom: 10 },
+  Kolkata: { longitude: 88.3467, latitude: 22.5722, zoom: 11 },
+  Ahmedabad: { longitude: 72.5921, latitude: 23.041, zoom: 11 },
 };
 
 function getCityCenter(city: string): CityConfig {
@@ -1030,7 +1040,18 @@ export function MapWorkspace() {
   // City-level data for overview mode (zoomed out)
   const isOverviewMode = zoom < 8;
   const { data: allCities } = useQuery({ queryKey: ["cities"], queryFn: getCities });
-  const showCityPins = !filteredCompanies || filteredCompanies.length === 0 || isOverviewMode;
+  // Zoomed out → one pin per city. While the first page of companies is still
+  // in flight there is nothing to plot yet, so the overview is right then too.
+  //
+  // Deliberately no longer "|| filteredCompanies.length === 0": that clause
+  // outranked the zoom check, so flying into a city whose viewport held no
+  // companies flipped the map back to the national overview and left a single
+  // city pin stranded on screen next to "0 companies in view".
+  const showCityPins = isOverviewMode || !filteredCompanies;
+  // Zoomed in, data loaded, nothing in this viewport — say so instead of
+  // showing a blank map (or a lone city pin).
+  const showEmptyViewport =
+    !showCityPins && !isLoading && !isError && filteredCompanies?.length === 0;
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -1151,6 +1172,15 @@ export function MapWorkspace() {
                 longitude={longitude}
                 latitude={latitude}
                 anchor="bottom"
+                // The company pins below stop propagation for the same reason:
+                // the marker sits inside the map container, so without this the
+                // click also reaches the Map's onClick, which clears
+                // openClusterId in the same React batch. The list had therefore
+                // never opened — "Activate to list them" was a lie.
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  setOpenClusterId(clusterId);
+                }}
               >
                 <ClusterPin
                   count={clusterFeature.properties.point_count}
@@ -1612,6 +1642,31 @@ export function MapWorkspace() {
           </div>
         )}
       </div>
+
+      {/* ── Empty viewport (map view only) ──
+          Zoomed in far enough that companies should be showing, but this
+          viewport holds none. Name the situation and offer the way out,
+          rather than leaving a blank map behind. */}
+      {viewMode === "map" && showEmptyViewport && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
+          <div className="pointer-events-auto flex max-w-xs flex-col items-center gap-1.5 rounded-xl border border-gray-100 bg-white/95 px-5 py-4 text-center shadow-2xl backdrop-blur-sm">
+            <Building2 className="h-8 w-8 text-gray-200" aria-hidden="true" />
+            <p className="text-sm font-medium text-gray-600">No companies in this view</p>
+            <p className="text-xs text-gray-500">
+              {searchQuery
+                ? `Nothing here matches "${searchQuery}".`
+                : "None of this city's companies are mapped in this area."}
+            </p>
+            <button
+              type="button"
+              onClick={() => mapRef.current?.zoomOut({ duration: 300 })}
+              className="mt-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-700"
+            >
+              Zoom out
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Zoom controls (map view only) ── */}
       {viewMode === "map" && (
