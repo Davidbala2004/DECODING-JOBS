@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tester Feedback — DECODING JOBS</title>
+  <meta name="description" content="Tell us what worked and what frustrated you in Decoding Jobs. Takes about three minutes." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316a34a'/%3E%3Ctext x='32' y='44' font-family='system-ui,sans-serif' font-size='30' font-weight='700' fill='white' text-anchor='middle'%3EDJ%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --primary: #16a34a;
+      --primary-hover: #15803d;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --surface: #ffffff;
+      --sunken: #f8fafb;
+      --mint: #f0fdf4;
+      --danger: #dc2626;
+      --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+      --shadow-lift: 0 8px 30px rgba(15, 23, 42, 0.08);
+      --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--mint) 0%, #ffffff 320px);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    :where(a, button, input, textarea, summary):focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: saturate(180%) blur(8px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #22c55e, #15803d);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 6px 20px rgba(22, 163, 74, 0.16);
+      flex: none;
+    }
+
+    .brand-name {
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--primary-hover);
+      text-transform: uppercase;
+    }
+
+    .brand-sub { font-size: 12px; color: var(--muted); }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary-hover);
+      background: var(--mint);
+      border: 1px solid #bbf7d0;
+      border-radius: 999px;
+      padding: 4px 10px;
+      white-space: nowrap;
+    }
+
+    main { max-width: 640px; margin: 0 auto; padding: 28px 20px 72px; }
+
+    .intro { margin-bottom: 22px; }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .intro p { margin: 0 0 12px; font-size: 14px; color: #334155; }
+
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .meta span {
+      font-size: 12px;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-card);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .card .hint { margin: 0 0 16px; font-size: 12px; color: var(--muted); }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label.field-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .optional { font-weight: 400; color: var(--muted); }
+
+    input[type="text"], input[type="email"], textarea {
+      width: 100%;
+      font: inherit;
+      font-size: 14px;
+      color: var(--ink);
+      background: var(--sunken);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    input::placeholder, textarea::placeholder { color: #94a3b8; }
+
+    input[type="text"]:focus, input[type="email"]:focus, textarea:focus {
+      outline: none;
+      background: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+    }
+
+    textarea { resize: vertical; min-height: 84px; }
+
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > .field { flex: 1 1 180px; }
+
+    /* Segmented role picker */
+    .segmented { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .segmented label {
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 13px;
+      cursor: pointer;
+      color: #334155;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+    .segmented input:checked + label,
+    .segmented label:has(input:checked) {
+      border-color: var(--primary);
+      background: var(--mint);
+      color: var(--primary-hover);
+      font-weight: 600;
+    }
+
+    .segmented input:focus-visible + label,
+    .segmented label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    /* Rating rows */
+    fieldset.rating {
+      border: 0;
+      padding: 14px 0 12px;
+      margin: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    fieldset.rating:first-of-type { border-top: 0; padding-top: 4px; }
+
+    legend {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0;
+      margin-bottom: 10px;
+    }
+
+    .scale { display: flex; align-items: center; gap: 8px; }
+
+    .scale .end {
+      font-size: 11px;
+      color: var(--muted);
+      flex: none;
+      width: 62px;
+    }
+
+    .scale .end.right { text-align: right; }
+
+    .pips { display: flex; gap: 6px; flex: 1; justify-content: center; }
+
+    .pips input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+
+    .pips label {
+      width: 38px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: #fff;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 600;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .pips label:hover { border-color: #86efac; background: #f7fef9; }
+
+    .pips input:checked + label {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .pips input:focus-visible + label { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #334155; }
+    .consent input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--primary); flex: none; }
+
+    .submit-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+    button.submit {
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      border-radius: 10px;
+      padding: 11px 22px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(22, 163, 74, 0.16);
+      transition: background 0.15s, transform 0.05s;
+    }
+
+    button.submit:hover:not(:disabled) { background: var(--primary-hover); }
+    button.submit:active:not(:disabled) { transform: translateY(1px); }
+    button.submit:disabled { opacity: 0.6; cursor: progress; }
+
+    .form-status { font-size: 13px; }
+    .form-status.error { color: var(--danger); }
+    .form-status.ok { color: var(--primary-hover); }
+
+    .muted-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+
+    /* Thank-you state */
+    .thanks {
+      display: none;
+      text-align: center;
+      padding: 40px 24px;
+    }
+
+    .thanks.show { display: block; }
+
+    .thanks .tick {
+      width: 56px;
+      height: 56px;
+      border-radius: 999px;
+      background: var(--mint);
+      color: var(--primary-hover);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+      font-size: 26px;
+    }
+
+    .thanks h2 { font-size: 20px; margin: 0 0 8px; }
+    .thanks p { font-size: 14px; color: #475569; margin: 0 auto; max-width: 380px; }
+
+    footer {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px 48px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      align-items: center;
+    }
+
+    footer a { color: var(--primary-hover); text-decoration: none; font-weight: 600; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .scale .end { width: 48px; }
+      .pips label { width: 34px; }
+      .pips { gap: 4px; }
+      h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-mark">DJ</span>
+      <span>
+        <span class="brand-name">Decoding Jobs</span><br />
+        <span class="brand-sub">Tester feedback</span>
+      </span>
+    </a>
+    <span class="badge">Private beta · 10 testers</span>
+  </header>
+
+  <main>
+    <div class="intro">
+      <h1>Thanks for testing Decoding&nbsp;Jobs 👋</h1>
+      <p>
+        You are one of ten people using this before anyone else. Be blunt — the
+        frustrating parts are the ones worth telling us about. Everything is
+        optional except the one written question, and nothing here is shared
+        publicly without your say-so.
+      </p>
+      <div class="meta">
+        <span>About 3 minutes</span>
+        <span>7 quick ratings</span>
+        <span>No account needed</span>
+      </div>
+    </div>
+
+    <form id="feedback" novalidate>
+      <!-- Identity -->
+      <section class="card">
+        <h2>Who is filling this in?</h2>
+        <p class="hint">Only so we know who to thank, and to ask you a follow-up if we need to.</p>
+
+        <div class="row">
+          <div class="field">
+            <label class="field-label" for="name">Name <span class="optional">(optional)</span></label>
+            <input type="text" id="name" name="name" placeholder="Your name" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="email">Email <span class="optional">(optional)</span></label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="role-label">I am testing as…</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="role-label">
+            <label><input type="radio" name="role" value="Student / fresher" />Student / fresher</label>
+            <label><input type="radio" name="role" value="Working professional" />Working professional</label>
+            <label><input type="radio" name="role" value="Recruiter / hiring" />Recruiter / hiring</label>
+            <label><input type="radio" name="role" value="Other" />Other</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ratings -->
+      <section class="card">
+        <h2>How was each part?</h2>
+        <p class="hint">1 = poor, 5 = excellent. Leave a row alone if you never got to it.</p>
+
+        <fieldset class="rating">
+          <legend>Finding companies on the map</legend>
+          <div class="scale">
+            <span class="end">Confusing</span>
+            <div class="pips">
+              <input type="radio" id="map-1" name="map" value="1" /><label for="map-1">1</label>
+              <input type="radio" id="map-2" name="map" value="2" /><label for="map-2">2</label>
+              <input type="radio" id="map-3" name="map" value="3" /><label for="map-3">3</label>
+              <input type="radio" id="map-4" name="map" value="4" /><label for="map-4">4</label>
+              <input type="radio" id="map-5" name="map" value="5" /><label for="map-5">5</label>
+            </div>
+            <span class="end right">Effortless</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>Searching and filtering for roles</legend>
+          <div class="scale">
+            <span class="end">Confusing</span>
+            <div class="pips">
+              <input type="radio" id="search-1" name="search" value="1" /><label for="search-1">1</label>
+              <input type="radio" id="search-2" name="search" value="2" /><label for="search-2">2</label>
+              <input type="radio" id="search-3" name="search" value="3" /><label for="search-3">3</label>
+              <input type="radio" id="search-4" name="search" value="4" /><label for="search-4">4</label>
+              <input type="radio" id="search-5" name="search" value="5" /><label for="search-5">5</label>
+            </div>
+            <span class="end right">Effortless</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>The company panel — details and open roles</legend>
+          <div class="scale">
+            <span class="end">Confusing</span>
+            <div class="pips">
+              <input type="radio" id="company-1" name="company" value="1" /><label for="company-1">1</label>
+              <input type="radio" id="company-2" name="company" value="2" /><label for="company-2">2</label>
+              <input type="radio" id="company-3" name="company" value="3" /><label for="company-3">3</label>
+              <input type="radio" id="company-4" name="company" value="4" /><label for="company-4">4</label>
+              <input type="radio" id="company-5" name="company" value="5" /><label for="company-5">5</label>
+            </div>
+            <span class="end right">Effortless</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>The AI assistant</legend>
+          <div class="scale">
+            <span class="end">Not useful</span>
+            <div class="pips">
+              <input type="radio" id="assistant-1" name="assistant" value="1" /><label for="assistant-1">1</label>
+              <input type="radio" id="assistant-2" name="assistant" value="2" /><label for="assistant-2">2</label>
+              <input type="radio" id="assistant-3" name="assistant" value="3" /><label for="assistant-3">3</label>
+              <input type="radio" id="assistant-4" name="assistant" value="4" /><label for="assistant-4">4</label>
+              <input type="radio" id="assistant-5" name="assistant" value="5" /><label for="assistant-5">5</label>
+            </div>
+            <span class="end right">Very useful</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>The application tracker</legend>
+          <div class="scale">
+            <span class="end">Not useful</span>
+            <div class="pips">
+              <input type="radio" id="tracker-1" name="tracker" value="1" /><label for="tracker-1">1</label>
+              <input type="radio" id="tracker-2" name="tracker" value="2" /><label for="tracker-2">2</label>
+              <input type="radio" id="tracker-3" name="tracker" value="3" /><label for="tracker-3">3</label>
+              <input type="radio" id="tracker-4" name="tracker" value="4" /><label for="tracker-4">4</label>
+              <input type="radio" id="tracker-5" name="tracker" value="5" /><label for="tracker-5">5</label>
+            </div>
+            <span class="end right">Very useful</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>Signing up and signing in</legend>
+          <div class="scale">
+            <span class="end">Confusing</span>
+            <div class="pips">
+              <input type="radio" id="auth-1" name="auth" value="1" /><label for="auth-1">1</label>
+              <input type="radio" id="auth-2" name="auth" value="2" /><label for="auth-2">2</label>
+              <input type="radio" id="auth-3" name="auth" value="3" /><label for="auth-3">3</label>
+              <input type="radio" id="auth-4" name="auth" value="4" /><label for="auth-4">4</label>
+              <input type="radio" id="auth-5" name="auth" value="5" /><label for="auth-5">5</label>
+            </div>
+            <span class="end right">Seamless</span>
+          </div>
+        </fieldset>
+
+        <fieldset class="rating">
+          <legend>Overall, would you recommend it to a friend?</legend>
+          <div class="scale">
+            <span class="end">Not yet</span>
+            <div class="pips">
+              <input type="radio" id="overall-1" name="overall" value="1" /><label for="overall-1">1</label>
+              <input type="radio" id="overall-2" name="overall" value="2" /><label for="overall-2">2</label>
+              <input type="radio" id="overall-3" name="overall" value="3" /><label for="overall-3">3</label>
+              <input type="radio" id="overall-4" name="overall" value="4" /><label for="overall-4">4</label>
+              <input type="radio" id="overall-5" name="overall" value="5" /><label for="overall-5">5</label>
+            </div>
+            <span class="end right">Definitely</span>
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Written -->
+      <section class="card">
+        <h2>In your own words</h2>
+        <p class="hint">Short is fine. Blunt is better.</p>
+
+        <div class="field">
+          <label class="field-label" for="confusing">
+            What confused you, broke, or made you want to give up? <span class="optional">(the one we read first)</span>
+          </label>
+          <textarea id="confusing" name="confusing" placeholder="e.g. I couldn't tell which pins had jobs, so I stopped looking at the map." required></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="liked">What did you actually like? <span class="optional">(optional)</span></label>
+          <textarea id="liked" name="liked" placeholder="Anything you'd be sad to lose."></textarea>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="anything">Anything else? <span class="optional">(optional)</span></label>
+          <textarea id="anything" name="anything" placeholder="Feature you expected, something missing in your city, a job you'd apply to…"></textarea>
+        </div>
+      </section>
+
+      <!-- Submit -->
+      <section class="card">
+        <label class="consent">
+          <input type="checkbox" id="quote" name="quote_ok" value="yes" />
+          <span>You may quote my feedback publicly, with my first name.</span>
+        </label>
+
+        <div class="submit-row" style="margin-top: 16px;">
+          <button type="submit" class="submit" id="submit">Send feedback</button>
+          <span class="form-status" id="status" role="status" aria-live="polite"></span>
+        </div>
+        <p class="muted-note">
+          Your answers go straight to the team — we don't run ads or sell data.
+        </p>
+      </section>
+    </form>
+
+    <section class="card thanks" id="thanks" role="status" aria-live="polite">
+      <div class="tick">✓</div>
+      <h2>Got it — thank you.</h2>
+      <p>
+        Your feedback is in. If you left an email we may ping you with a
+        follow-up question or to let you know when we ship your suggestion.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Decoding Jobs — private tester build</span>
+    <a href="https://github.com/balaji-ml-eng/DECODING-JOBS" target="_blank" rel="noreferrer">Source</a>
+  </footer>
+
+  <script>
+    /* ------------------------------------------------------------------
+       Configuration — set these two before you deploy.
+       ------------------------------------------------------------------ */
+    const CONFIG = {
+      // Preferred: a Formspree endpoint so responses land in a dashboard.
+      // Create one free at https://formspree.io (2 minutes) and paste it here,
+      // e.g. "https://formspree.io/f/abcdwxyz".
+      endpoint: "",
+
+      // Used only when `endpoint` is empty: the feedback opens in the tester's
+      // own mail app addressed here. Change it to an inbox you actually read.
+      fallbackEmail: "feedback@decodingjobs.app",
+
+      // Shown as a "Open the app" button in the header when set, so testers can
+      // jump straight to what they are testing. Leave "" to hide it.
+      appUrl: ""
+    };
+    /* ------------------------------------------------------------------ */
+
+    const form = document.getElementById("feedback");
+    const statusEl = document.getElementById("status");
+    const submitBtn = document.getElementById("submit");
+    const thanksEl = document.getElementById("thanks");
+
+    // Optional per-tester attribution: share a link like
+    //   .../?tester=priya
+    // and the submission is tagged with who sent it. Hidden from the tester.
+    const tester = new URLSearchParams(location.search).get("tester");
+    if (tester) {
+      const hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = "tester";
+      hidden.value = tester;
+      form.appendChild(hidden);
+    }
+
+    // Optional "Open the app" affordance for testers.
+    if (CONFIG.appUrl) {
+      const link = document.createElement("a");
+      link.className = "badge";
+      link.href = CONFIG.appUrl;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "Open the app →";
+      link.style.textDecoration = "none";
+      const bar = document.querySelector(".topbar");
+      bar.insertBefore(link, bar.querySelector(".badge"));
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      statusEl.className = "form-status";
+
+      // The one written answer we ask for.
+      const confusing = document.getElementById("confusing");
+      if (!confusing.value.trim()) {
+        statusEl.textContent = "Tell us one thing that confused or broke — that's the bit we need.";
+        statusEl.classList.add("error");
+        confusing.focus();
+        return;
+      }
+
+      const data = Object.fromEntries(new FormData(form).entries());
+      data.page = "tester-feedback";
+      data.submitted_at = new Date().toISOString();
+
+      if (!CONFIG.endpoint) {
+        openMailFallback(data);
+        return;
+      }
+
+      submitBtn.disabled = true;
+      statusEl.textContent = "Sending…";
+
+      try {
+        const res = await fetch(CONFIG.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ ...data, _subject: "Decoding Jobs — tester feedback" }),
+        });
+        if (!res.ok) throw new Error("Request failed with " + res.status);
+        showThanks();
+      } catch (err) {
+        statusEl.textContent = "Couldn't send — opening your mail app instead…";
+        statusEl.classList.add("error");
+        openMailFallback(data);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function showThanks() {
+      statusEl.textContent = "";
+      statusEl.className = "form-status";
+      form.style.display = "none";
+      thanksEl.classList.add("show");
+      thanksEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function openMailFallback(data) {
+      const lines = Object.entries(data)
+        .filter(([key]) => !key.startsWith("_") && key !== "page" && key !== "submitted_at")
+        .map(([key, value]) => key + ": " + value)
+        .join("\n");
+      const href =
+        "mailto:" + CONFIG.fallbackEmail +
+        "?subject=" + encodeURIComponent("Decoding Jobs — tester feedback") +
+        "&body=" + encodeURIComponent(lines);
+      window.location.href = href;
+      statusEl.textContent = "Your mail app should be open — just hit send.";
+      statusEl.classList.add("ok");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# Render Blueprint — deploys the core API only.
+#
+# Deploy: push this file, then in the Render dashboard pick
+#   New → Blueprint → this repo.
+#
+# There is deliberately no `databases:` entry here. Render's free Postgres
+# expires 30 days after creation (with a 14-day grace period), which would kill
+# a tester build mid-study. The hosted database lives on Neon's free tier
+# instead, so this file expects its connection string pasted into DATABASE_URL.
+# See DEPLOY.md for the full runbook.
+
+services:
+  - type: web
+    name: decoding-jobs-api
+    runtime: docker
+    plan: free
+    # Closest Render region to India; the ten testers are all in Bengaluru.
+    region: singapore
+    dockerContext: services/core-api
+    dockerfilePath: services/core-api/Dockerfile
+    healthCheckPath: /health
+    # The Dockerfile's production CMD runs `--workers 2`. A free instance is
+    # 0.1 CPU / 512 MB, which two uvicorn workers plus asyncpg pool can crowd;
+    # one worker serves ten testers with room to spare.
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    autoDeployTrigger: commit
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # Everything below is supplied in the dashboard, never committed.
+      # `sync: false` means "prompt me for this, don't store it in git".
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # Gates /companies/seed, /jobs/seed and /jobs/expire-stale. Those write to
+      # the live map, so leaving this unset closes them rather than opening them.
+      - key: INGESTION_API_KEY
+        generateValue: true

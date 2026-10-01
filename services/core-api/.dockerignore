@@ -2,6 +2,14 @@ __pycache__
 *.pyc
 *.pyo
 .env
+# The production target does `COPY . .`, and .env.local is where real secrets
+# live (GROQ_API_KEY, SendGrid creds) — it must never be baked into an image
+# that gets pushed to a registry. .env alone was not enough: .env.local, the
+# file the compose stack and README actually tell you to create, was still
+# copied in.
+.env.local
+.env.*.local
+*.dump
 .venv
 venv
 .git

@@ -1,0 +1,11 @@
+# Shell scripts must keep LF line endings on every platform.
+#
+# core.autocrlf is true on the Windows machine this project is developed on, so
+# without this rule a fresh checkout rewrites .sh files with CRLF endings. A
+# CRLF shebang then fails with "bad interpreter: /usr/bin/env bash^M", which is a
+# confusing way to discover a line-ending problem. Forcing eol=lf for .sh keeps
+# them runnable from Git Bash, macOS, Linux and CI alike.
+#
+# Everything else follows the local autocrlf setting, so Windows editors and
+# tooling keep working normally.
+*.sh text eol=lf
