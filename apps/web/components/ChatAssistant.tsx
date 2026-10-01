@@ -542,7 +542,7 @@ export function ChatAssistant({
                   <div
                     className={cn(
                       "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-                      turn.role === "user" ? "bg-gray-100 text-gray-500" : "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+                      turn.role === "user" ? "bg-gray-100 text-gray-500" : "bg-green-600 text-white"
                     )}
                   >
                     {turn.role === "user" ? <User className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
@@ -552,7 +552,7 @@ export function ChatAssistant({
                       className={cn(
                         "rounded-2xl px-3.5 py-2.5 shadow-sm",
                         turn.role === "user"
-                          ? "whitespace-pre-wrap bg-gradient-to-r from-green-500 to-emerald-600 text-[13px] leading-relaxed text-white"
+                          ? "whitespace-pre-wrap bg-green-600 text-[13px] leading-relaxed text-white"
                           : "border border-gray-100 bg-white text-gray-700"
                       )}
                     >
@@ -579,7 +579,7 @@ export function ChatAssistant({
 
               {isBusy && (
                 <div className="flex gap-2.5">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white">
                     <Sparkles className="h-3.5 w-3.5" />
                   </div>
                   <div className="flex items-center gap-1 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">

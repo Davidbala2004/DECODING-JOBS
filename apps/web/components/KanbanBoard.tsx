@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Sparkles, Copy, Check, X, FileText, HelpCircle, Loader2 } from "lucide-react";
+import { Bookmark, Send, MessagesSquare, Trophy, Mail, AlertTriangle, MapPin, Plus, Copy, Check, X, FileText, HelpCircle, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useIdentityStore } from "@/lib/identityStore";
@@ -188,7 +188,6 @@ function KanbanCard({ card, index }: { card: ApplicationBoardCard; index: number
           <p className="truncate text-[12.5px] font-bold text-gray-900">{company.name}</p>
           <p className="truncate text-[12.5px] text-gray-500">{card.job.title}</p>
         </div>
-        {card.status === "offer" && <Sparkles className="h-4 w-4 shrink-0 text-emerald-500" />}
       </div>
 
       {card.auto_tracked && (

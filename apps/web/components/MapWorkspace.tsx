@@ -29,7 +29,7 @@ import {
   BriefcaseBusiness,
   ChevronDown,
   Layers,
-  Sparkles,
+  Target,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -530,7 +530,7 @@ const ClusterPin = React.memo(function ClusterPin({
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-white shadow-sm shadow-green-500/20">
+    <span className="flex items-center gap-1 rounded-full bg-green-600 py-1 pl-2.5 pr-1.5 text-[11.5px] font-bold text-white">
       {label}
       <button
         type="button"
@@ -1398,7 +1398,7 @@ export function MapWorkspace() {
           className={cn(
             "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold shadow-lg transition-all duration-200",
             hiringOnly
-              ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-green-500/25"
+              ? "bg-green-600 text-white"
               : "bg-white text-gray-600 hover:bg-green-50 hover:text-green-700"
           )}
         >
@@ -1419,7 +1419,7 @@ export function MapWorkspace() {
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200",
               mobileFiltersOpen
-                ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm"
+                ? "bg-green-600 text-white"
                 : "text-gray-600 hover:bg-green-50 hover:text-green-700"
             )}
           >
@@ -1440,11 +1440,11 @@ export function MapWorkspace() {
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200",
                 forYouOnly
-                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm"
+                  ? "bg-green-600 text-white"
                   : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}
             >
-              <Sparkles className="h-4 w-4" />
+              <Target className="h-4 w-4" />
               <span className="hidden sm:inline">For You</span>
             </button>
           )}
@@ -1591,7 +1591,7 @@ export function MapWorkspace() {
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedType(null)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                selectedType === null ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                selectedType === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Blocks className="h-3.5 w-3.5" />
               All types
@@ -1601,7 +1601,7 @@ export function MapWorkspace() {
               return (
                 <button key={t.type} type="button" onClick={() => setSelectedType(selectedType === t.type ? null : t.type)}
                   className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                    selectedType === t.type ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                    selectedType === t.type ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <Icon className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">{t.type}</span>
@@ -1621,7 +1621,7 @@ export function MapWorkspace() {
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedStage(null)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                selectedStage === null ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                selectedStage === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Blocks className="h-3.5 w-3.5" />
               All stages
@@ -1631,7 +1631,7 @@ export function MapWorkspace() {
               return (
                 <button key={s.stage} type="button" onClick={() => setSelectedStage(selectedStage === s.stage ? null : s.stage)}
                   className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                    selectedStage === s.stage ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                    selectedStage === s.stage ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <Icon className="h-3.5 w-3.5" />
                   <span className="flex-1 text-left">{s.stage}</span>
@@ -1653,7 +1653,7 @@ export function MapWorkspace() {
             {areas?.map((a) => (
               <button key={a.area} type="button" onClick={() => setSelectedArea(selectedArea === a.area ? null : a.area)}
                 className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                  selectedArea === a.area ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                  selectedArea === a.area ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
                 )}>
                 <MapPinned className="h-3.5 w-3.5" />
                 <span className="flex-1 text-left">{a.area}</span>
@@ -1673,7 +1673,7 @@ export function MapWorkspace() {
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedSector(null)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                selectedSector === null ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                selectedSector === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Factory className="h-3.5 w-3.5" />
               All sectors
@@ -1684,7 +1684,7 @@ export function MapWorkspace() {
               return (
                 <button key={s.sector} type="button" onClick={() => setSelectedSector(active ? null : s.sector)}
                   className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                    active ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
+                    active ? "bg-green-600 font-semibold text-white" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <span className="h-3 w-3 rounded-full border-2" style={{ borderColor: cfg.color, background: active ? "white" : `${cfg.color}20` }} />
                   <span className="flex-1 text-left">{s.sector}</span>
@@ -1706,7 +1706,7 @@ export function MapWorkspace() {
           <div className="mt-1.5 flex flex-col gap-0.5">
             <button type="button" onClick={() => setSelectedDepartment(null)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                selectedDepartment === null ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
+                selectedDepartment === null ? "bg-green-600 font-semibold text-white" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
               )}>
               <Layers className="h-3.5 w-3.5" />
               All departments
@@ -1716,7 +1716,7 @@ export function MapWorkspace() {
               return (
                 <button key={d.department} type="button" onClick={() => setSelectedDepartment(active ? null : d.department)}
                   className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all",
-                    active ? "bg-gradient-to-r from-green-500 to-emerald-600 font-semibold text-white shadow-md shadow-green-500/20" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
+                    active ? "bg-green-600 font-semibold text-white" : "text-gray-500 hover:bg-green-50 hover:text-green-700"
                   )}>
                   <span className="flex-1 text-left">{d.department}</span>
                   <span className={cn("rounded-full px-1.5 py-0.5 text-[11.5px] font-bold",

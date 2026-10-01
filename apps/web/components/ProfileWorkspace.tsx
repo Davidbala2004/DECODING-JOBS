@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Github, Linkedin, Code2, Loader2, Sparkles, User } from "lucide-react";
+import { Check, CheckCircle2, Github, Linkedin, Code2, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -165,7 +165,7 @@ function ProfileForm({ email }: { email: string }) {
     <main className="scroll-thin flex-1 overflow-y-auto bg-gradient-to-b from-green-50/40 to-white">
       <div className="mx-auto max-w-xl px-4 py-10 sm:py-14">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
             <User className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">Your preferences</h1>
@@ -213,7 +213,7 @@ function ProfileForm({ email }: { email: string }) {
                     className={cn(
                       "rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all",
                       active
-                        ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm shadow-green-500/20"
+                        ? "bg-green-600 text-white"
                         : "border border-gray-200 text-gray-500 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
                     )}
                   >
@@ -326,7 +326,7 @@ function ProfileForm({ email }: { email: string }) {
             ) : mutation.isSuccess ? (
               <><CheckCircle2 className="h-4 w-4" /> Saved</>
             ) : (
-              <><Sparkles className="h-4 w-4" /> Save preferences</>
+              <><Check className="h-4 w-4" /> Save preferences</>
             )}
           </button>
         </form>

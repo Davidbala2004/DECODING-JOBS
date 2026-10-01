@@ -30,7 +30,7 @@ function CompanyVerification() {
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6" style={{ animation: "cardFadeIn 0.4s ease-out both" }}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
         <Building2 className="h-6 w-6 text-white" />
       </div>
 

@@ -78,7 +78,7 @@ export function SavedSearchesButton({
           "flex items-center gap-1.5 text-sm font-semibold transition-all duration-200",
           grouped ? "rounded-lg px-3 py-1.5" : "rounded-xl px-3.5 py-2 shadow-lg",
           open
-            ? cn("bg-gradient-to-r from-green-500 to-emerald-600 text-white", !grouped && "shadow-green-500/25")
+            ? "bg-green-600 text-white"
             : cn("text-gray-600 hover:bg-green-50 hover:text-green-700", !grouped && "bg-white")
         )}
       >

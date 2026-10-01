@@ -6,12 +6,12 @@ import { useMutation } from "@tanstack/react-query";
 import {
   Building2,
   Rocket,
+  Check,
   CheckCircle2,
   AlertTriangle,
   Loader2,
   ArrowRight,
   MapPin,
-  Sparkles,
   ChevronDown,
   Plus,
 } from "lucide-react";
@@ -150,7 +150,7 @@ export function RegisterCompanyForm() {
       `}</style>
       {/* Header */}
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
           <Rocket className="h-6 w-6 text-white" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">List your startup</h1>
@@ -395,7 +395,7 @@ export function RegisterCompanyForm() {
                 {jobMutation.isPending ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Posting…</>
                 ) : (
-                  <><Sparkles className="h-4 w-4" /> Post role</>
+                  <><Check className="h-4 w-4" /> Post role</>
                 )}
               </button>
             </div>

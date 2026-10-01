@@ -220,7 +220,7 @@ function RoleCard({
               href={job.apply_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 px-2.5 py-1.5 text-[11.5px] font-bold text-white shadow-sm shadow-green-500/20 transition-all hover:shadow-md hover:shadow-green-500/30"
+              className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-[11.5px] font-bold text-white transition-colors hover:bg-green-700"
             >
               <Zap className="h-3 w-3" />
               APPLY
@@ -387,7 +387,7 @@ export function CompanySidePanel() {
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-sm font-bold text-white shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-600 text-sm font-bold text-white">
               {getInitials(company.name)}
             </div>
           )}
