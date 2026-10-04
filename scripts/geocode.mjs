@@ -158,6 +158,65 @@ export async function geocodeCompanies(companies) {
   return results;
 }
 
+// ---------------------------------------------------------------------------
+// De-clustering.
+//
+// Two things collapse a whole city onto a single coordinate: Adzuna returns
+// the *search centroid* as the latitude/longitude of every job it serves, so
+// every Adzuna company in "Hyderabad" shares one identical point; and our own
+// geocoder falls back to the city centre when Nominatim can't place a name.
+// The result is a map where one bubble advertises "455 companies here" and
+// zooming in reveals nothing — the coordinates are wrong, not the map.
+//
+// This fans a shared coordinate out across a few kilometres on a deterministic
+// sunflower (golden-angle) spiral: evenly spread, minimum distance between
+// neighbours, and stable across re-runs because the order is sorted by key.
+// Applied *after* geocoding so it catches both the Adzuna centroid and the
+// city-centre fallback with one rule.
+// ---------------------------------------------------------------------------
+const GOLDEN_ANGLE = 2.399963229728653;
+
+/**
+ * @param {Array<{ key: string, city: string, lat: number, lng: number }>} entries
+ * @param {{ minGroup?: number, stepDeg?: number }} [opts]
+ * @returns {Map<string, { lat: number, lng: number }>} key → spread coordinate
+ */
+export function declusterSharedPoints(entries, { minGroup = 2, stepDeg = 0.004 } = {}) {
+  const byPoint = new Map();
+  for (const e of entries) {
+    const k = `${e.city}|${Number(e.lat).toFixed(5)}|${Number(e.lng).toFixed(5)}`;
+    if (!byPoint.has(k)) byPoint.set(k, []);
+    byPoint.get(k).push(e);
+  }
+
+  const out = new Map();
+  for (const group of byPoint.values()) {
+    if (group.length < minGroup) {
+      const [only] = group;
+      out.set(only.key, { lat: only.lat, lng: only.lng });
+      continue;
+    }
+
+    // Stable order so a re-run spreads the same companies the same way.
+    group.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+    const latScale = Math.max(Math.cos((group[0].lat * Math.PI) / 180), 0.2);
+
+    group.forEach((e, i) => {
+      if (i === 0) {
+        out.set(e.key, { lat: e.lat, lng: e.lng });
+        return;
+      }
+      const r = stepDeg * Math.sqrt(i);
+      const a = i * GOLDEN_ANGLE;
+      out.set(e.key, {
+        lat: e.lat + r * Math.cos(a),
+        lng: e.lng + (r * Math.sin(a)) / latScale,
+      });
+    });
+  }
+  return out;
+}
+
 // Run as standalone script for testing.
 if (import.meta.url === `file://${process.argv[1]}`) {
   const testQuery = process.argv[2] || "Razorpay Bangalore";

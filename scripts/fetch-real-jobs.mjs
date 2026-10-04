@@ -16,7 +16,7 @@
  */
 
 import "dotenv/config";
-import { geocodeCompanies } from "./geocode.mjs";
+import { geocodeCompanies, declusterSharedPoints } from "./geocode.mjs";
 import {
   classifySector,
   classifyWorkMode,
@@ -590,13 +590,25 @@ async function seedCompanies(companies) {
     toGeocode.map((c) => ({ name: c.name, area: c.area, city: c.city, address: c.address }))
   );
 
+  // Resolve every company's coordinate first, then de-cluster the ones that
+  // share a point. Adzuna hands back the city's search centroid as *every*
+  // job's lat/lng, so without this a whole city stacks on one coordinate and
+  // the map shows a single enormous bubble. See declusterSharedPoints.
+  const resolvedEntries = [];
+  for (const company of companies) {
+    const base = company.lat && company.lng
+      ? { lat: company.lat, lng: company.lng }
+      : coords.get(company.name);
+    if (!base) continue;
+    resolvedEntries.push({ key: company.name, city: company.city || "Bengaluru", lat: base.lat, lng: base.lng });
+  }
+  const spread = declusterSharedPoints(resolvedEntries);
+
   let companiesSeeded = 0;
   let jobsSeeded = 0;
 
   for (const company of companies) {
-    const resolvedCoords = company.lat && company.lng
-      ? { lat: company.lat, lng: company.lng }
-      : coords.get(company.name);
+    const resolvedCoords = spread.get(company.name);
 
     if (!resolvedCoords) {
       console.error(`  ⚠ No coordinates for "${company.name}" — skipping.`);

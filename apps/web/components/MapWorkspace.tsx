@@ -191,19 +191,52 @@ const CompanyPin = React.memo(function CompanyPin({
   isSelected,
   isHovered,
   zoom,
-  onClick,
+  onSelect,
   onHover,
   onLeave,
+  spreadFrom,
+  project,
 }: {
   company: Company;
   isSelected: boolean;
   isHovered: boolean;
   zoom: number;
-  onClick: () => void;
-  onHover: () => void;
+  /** Where the cluster this pin came out of was drawn, if it just split. */
+  spreadFrom?: { longitude: number; latitude: number };
+  /** Geo → screen pixels, so the pin can animate in from the bubble's spot. */
+  project: (longitude: number, latitude: number) => { x: number; y: number } | null;
+  // These take the id rather than being pre-bound, so the parent can hand down
+  // one stable callback for every pin. A bare `() => onSelect(company.id)` here
+  // would be a new function on each render, which defeats React.memo for the
+  // whole pin layer — the ~90 markers a single zoom step reconciles.
+  onSelect: (companyId: number) => void;
+  onHover: (companyId: number) => void;
   onLeave: () => void;
 }) {
+  const handleClick = useCallback(() => onSelect(company.id), [onSelect, company.id]);
+  const handleEnter = useCallback(() => onHover(company.id), [onHover, company.id]);
   const isHiring = company.active_job_count > 0;
+
+  // Lazy ref init during render (rather than an effect): the offset only ever
+  // matters for the first paint, and computing it in an effect would show one
+  // frame of the pin already at its final spot before it jumps back to the
+  // bubble — a visible flicker. Reading the map's projection is a pure read.
+  const spreadRef = useRef<{ x: number; y: number } | null | undefined>(undefined);
+  if (spreadRef.current === undefined) {
+    spreadRef.current = null;
+    if (spreadFrom) {
+      const from = project(spreadFrom.longitude, spreadFrom.latitude);
+      const to = project(company.longitude, company.latitude);
+      if (from && to) {
+        const dx = from.x - to.x;
+        const dy = from.y - to.y;
+        // Sub-pixel travel means the pin barely moved; animating that reads as
+        // a twitch rather than a spread.
+        if (Math.hypot(dx, dy) >= 2) spreadRef.current = { x: dx, y: dy };
+      }
+    }
+  }
+  const spread = spreadRef.current;
   const sector = getSectorConfig(company.sector) ?? DEFAULT_SECTOR;
 
   // Resolve logo URL via local proxy (computed once)
@@ -212,38 +245,58 @@ const CompanyPin = React.memo(function CompanyPin({
     [company.website_url, company.logo_url]
   );
 
-  // Dynamic sizing based on zoom level (snapped to avoid micro-jitter)
+  // Dynamic sizing based on zoom level (snapped to avoid micro-jitter).
+  //
+  // Deliberately small. The reference map this is measured against draws an
+  // individual startup as a 34px flat circle with a single 1px shadow, and at
+  // 32–52px with a glow ring and badges ours crowded the street view badly —
+  // the pins, not the streets, became the map. 26–34px keeps the logo readable
+  // while letting the basemap through.
   const PIN_SIZE = useMemo(() => {
     const zoomScale = Math.min(Math.max((zoom - 10) / 4, 0), 1);
-    const baseSize = 32 + zoomScale * 20;
-    const base = isSelected ? baseSize + 16 : isHovered ? baseSize + 8 : baseSize;
+    const baseSize = 26 + zoomScale * 8;
+    const base = isSelected ? baseSize + 6 : isHovered ? baseSize + 3 : baseSize;
     // A company with zero active jobs renders smaller — "worth a click?" is
     // visible before the click, not just after, instead of every pin on the
     // map looking equally promising regardless of whether it's hiring.
-    return isHiring || isSelected || isHovered ? base : base * 0.8;
+    return isHiring || isSelected || isHovered ? base : base * 0.85;
   }, [zoom, isSelected, isHovered, isHiring]);
 
   return (
     <div
-      className="flex flex-col items-center"
+      className={spread ? "pin-spread flex flex-col items-center" : "flex flex-col items-center"}
+      data-pin-spread={spread ? "1" : undefined}
       style={{
         zIndex: isSelected ? 200 : isHovered ? 100 : 10,
         cursor: "pointer",
         opacity: isHiring || isSelected || isHovered ? 1 : 0.55,
-        filter: isSelected
-          ? "drop-shadow(0 4px 12px rgba(0,0,0,0.25))"
-          : "drop-shadow(0 2px 6px rgba(0,0,0,0.15))",
+        // Deliberately no `filter: drop-shadow` on this wrapper. It sat on every
+        // one of a few hundred markers, and a filter forces its own compositing
+        // layer per element — this was the single biggest cost while panning.
+        // The avatar's own box-shadow below still gives the pin its lift.
         transition: "opacity 0.2s ease",
+        ...(spread
+          ? {
+              "--spread-x": `${spread.x.toFixed(1)}px`,
+              "--spread-y": `${spread.y.toFixed(1)}px`,
+            }
+          : null),
       }}
-      onClick={onClick}
-      onMouseEnter={onHover}
+      onClick={handleClick}
+      onMouseEnter={handleEnter}
       onMouseLeave={onLeave}
     >
       {/* ── Floating name pill (selected) ── */}
       {isSelected && (
+        // Absolutely positioned, like the hover tooltip below it, so it does not
+        // grow the marker box. The marker is now anchored at its centre (a flat
+        // circle carries no tip, so its centre *is* its location); an in-flow
+        // pill would push the avatar down the instant the pin was selected.
         <div
-          className="mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold text-white z-50"
+          className="absolute bottom-full mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-bold text-white z-50"
           style={{
+            left: "50%",
+            transform: "translateX(-50%)",
             background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
             boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           }}
@@ -260,44 +313,34 @@ const CompanyPin = React.memo(function CompanyPin({
 
       {/* ── Main avatar ── */}
       <div className="relative">
-        {/* Hiring: animated pulse ring */}
+        {/* Hiring halo — a thin ring that pulses *opacity only*. The previous
+            version scaled to 2× over a -6px inset, so every hiring pin sat
+            inside a pale green balloon roughly twice its size; that halo, not
+            the pin, was what made a dense street view look crowded. */}
         {isHiring && (
-          <>
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                border: "2px solid #22c55e",
-                animation: "ping 1.8s cubic-bezier(0,0,0.2,1) infinite",
-                opacity: 0.4,
-                margin: "-6px",
-              }}
-            />
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{
-                border: "2px solid #22c55e",
-                animation: "ping 1.8s cubic-bezier(0,0,0.2,1) infinite 0.6s",
-                opacity: 0.25,
-                margin: "-6px",
-              }}
-            />
-          </>
+          <span
+            className="pin-ring pointer-events-none absolute inset-0 rounded-full"
+            style={{ border: "1.5px solid #22c55e", animation: "ringPulse 2.4s ease-out infinite" }}
+          />
         )}
 
         {/* Outer ring */}
         <div
-          className="rounded-full transition-all duration-[400ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          data-company-pin
+          className="rounded-full transition-all duration-200 ease-out"
           style={{
             width: PIN_SIZE,
             height: PIN_SIZE,
-            padding: 3,
+            padding: 2,
             background: isHiring
               ? "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)"
               : `linear-gradient(135deg, ${sector.color}66 0%, ${sector.color}33 100%)`,
+            // One shallow shadow, like the reference, instead of a coloured glow
+            // plus a wide drop shadow stacked on every pin.
             boxShadow: isHiring
-              ? "0 0 0 2px rgba(34,197,94,0.3), 0 4px 12px rgba(34,197,94,0.2)"
-              : `0 0 0 1px ${sector.color}22, 0 2px 8px rgba(0,0,0,0.1)`,
-            transform: isSelected ? "scale(1.2)" : isHovered ? "scale(1.08)" : "scale(1)",
+              ? "0 0 0 1.5px rgba(34,197,94,0.45), 0 1px 4px rgba(15,23,42,0.3)"
+              : `0 0 0 1px ${sector.color}33, 0 1px 4px rgba(15,23,42,0.25)`,
+            transform: isSelected ? "scale(1.15)" : isHovered ? "scale(1.07)" : "scale(1)",
           }}
         >
           {/* Inner white circle with logo */}
@@ -328,7 +371,7 @@ const CompanyPin = React.memo(function CompanyPin({
             <span
               className="logo-fallback font-extrabold leading-none select-none"
               style={{
-                fontSize: PIN_SIZE * 0.28,
+                fontSize: PIN_SIZE * 0.34,
                 color: sector.color,
                 display: logoUrl ? "none" : "flex",
                 position: logoUrl ? "absolute" : "relative",
@@ -339,13 +382,14 @@ const CompanyPin = React.memo(function CompanyPin({
           </div>
         </div>
 
-        {/* Hiring badge */}
+        {/* Hiring badge — sized to the smaller pin, or it reads as a second
+            marker stuck to the first. */}
         {isHiring && (
           <div
-            className="absolute flex items-center justify-center rounded-full bg-green-500 text-white shadow-md"
-            style={{ width: 20, height: 20, bottom: -2, right: -4, border: "2.5px solid white" }}
+            className="absolute flex items-center justify-center rounded-full bg-green-500 text-white shadow-sm"
+            style={{ width: 14, height: 14, bottom: -1, right: -2, border: "1.5px solid white" }}
           >
-            <Briefcase className="h-2.5 w-2.5" />
+            <Briefcase className="h-2 w-2" />
           </div>
         )}
 
@@ -354,8 +398,8 @@ const CompanyPin = React.memo(function CompanyPin({
             so a freshly-opened role is visually obvious at a glance. */}
         {company.recently_hiring && (
           <div
-            className="absolute flex items-center justify-center rounded-full bg-lime-400 px-1.5 py-0.5 text-xs font-extrabold text-emerald-950 shadow-md"
-            style={{ top: -8, left: "50%", transform: "translateX(-50%)", animation: "newFlash 1.1s ease-in-out infinite", border: "1.5px solid white" }}
+            className="absolute flex items-center justify-center rounded-full bg-lime-400 px-1 py-px text-[9px] font-extrabold leading-tight text-emerald-950 shadow-sm"
+            style={{ top: -7, left: "50%", transform: "translateX(-50%)", animation: "newFlash 1.1s ease-in-out infinite", border: "1px solid white" }}
           >
             NEW
           </div>
@@ -365,7 +409,7 @@ const CompanyPin = React.memo(function CompanyPin({
         {!isHiring && (
           <div
             className="absolute rounded-full bg-gray-300"
-            style={{ width: 10, height: 10, bottom: 0, right: 0, border: "2px solid white" }}
+            style={{ width: 7, height: 7, bottom: 0, right: 0, border: "1.5px solid white" }}
           />
         )}
       </div>
@@ -412,10 +456,15 @@ const CompanyPin = React.memo(function CompanyPin({
 });
 
 // ---------------------------------------------------------------------------
-// City-level cluster — a small classic map pin (teardrop), not a card and not
-// a number badge. Count/hiring detail lives in a tooltip that only appears on
-// hover/select, so the pin itself stays small and simple; the 3D feel comes
-// from a glossy rotated-teardrop shape, a floating bob, and a bounce-in drop.
+// City-level pin — a small classic teardrop waypoint, not a card and not a
+// number badge. Count/hiring detail lives in a tooltip that appears on
+// hover/select, so the pin itself stays small and simple.
+//
+// Size is deliberately restrained. The overview shows all 15 cities at once, so
+// these read as a scatter of waypoints across the country: at 28/34px they
+// crowded one another and competed with the company pins they exist to open.
+// 22/26px keeps the field light, and the invisible hit area below means the
+// smaller artwork costs nothing in clickability.
 // ---------------------------------------------------------------------------
 const CityPin = React.memo(function CityPin({
   cityName, count, hiringCount, isSelected, isHovered, onClick, onHover, onLeave,
@@ -426,7 +475,7 @@ const CityPin = React.memo(function CityPin({
 }) {
   const hasHiring = hiringCount > 0;
   const isActive = isSelected || isHovered;
-  const size = isActive ? 34 : 28;
+  const size = isActive ? 26 : 22;
 
   return (
     <div
@@ -439,7 +488,7 @@ const CityPin = React.memo(function CityPin({
       {/* Tooltip — city name + counts, shown only on hover/select */}
       {isActive && (
         <div
-          className="absolute bottom-full mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-lg"
+          className="absolute bottom-full mb-2 flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold text-white shadow-md"
           style={{ background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)", animation: "fadeSlideUp 0.15s ease-out" }}
         >
           {cityName}
@@ -448,22 +497,38 @@ const CityPin = React.memo(function CityPin({
         </div>
       )}
 
+      {/* Deliberately no invisible padded hit area here. The southern cities sit
+          within a few pixels of each other at the national overview (Bengaluru
+          and Mysuru are 3px apart edge to edge), so any padding extends over a
+          neighbouring pin and lets a later marker steal its clicks — a bigger
+          target that fires the wrong city is worse than a 22px one. Shrinking
+          the artwork is what buys the room. */}
       <div
+        data-city-pin
         className="relative flex items-center justify-center"
         style={{
           width: size,
           height: size,
-          transition: "width 0.25s cubic-bezier(0.34,1.56,0.64,1), height 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-          animation: isActive
-            ? "pinBounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1)"
-            : "pinBounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1), cityFloat 3.2s ease-in-out infinite 0.45s",
+          transition: "width 0.22s cubic-bezier(0.34,1.56,0.64,1), height 0.22s cubic-bezier(0.34,1.56,0.64,1)",
+          // Entrance only. This used to add an endless cityFloat bob, which made
+          // every city pin a permanently moving click target (hard to hit, and
+          // it never satisfies an automated "element is stable" wait) while
+          // keeping 30 infinite animations alive on the overview.
+          animation: "pinBounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
-        {/* Hiring pulse — a soft ring breathing outward from the pin head */}
+        {/* Hiring pulse — a soft ring breathing outward from the pin head.
+            Starts inset so the halo reads as a glow around the pin rather than
+            a second, larger balloon doubling its apparent size. */}
         {hasHiring && (
           <span
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{ border: "2px solid #22c55e", animation: "ping 2.2s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.4 }}
+            className="pointer-events-none absolute rounded-full"
+            style={{
+              inset: "22%",
+              border: "1.5px solid #22c55e",
+              animation: "ping 2.4s cubic-bezier(0,0,0.2,1) infinite",
+              opacity: 0.3,
+            }}
           />
         )}
 
@@ -471,21 +536,25 @@ const CityPin = React.memo(function CityPin({
         <div
           className="absolute inset-0 rounded-[50%_50%_50%_0] transition-transform duration-200"
           style={{
-            transform: `rotate(-45deg) scale(${isActive ? 1.1 : 1})`,
+            transform: `rotate(-45deg) scale(${isActive ? 1.08 : 1})`,
             background: hasHiring
-              ? "linear-gradient(135deg, #4ade80 0%, #16a34a 55%, #047857 100%)"
-              : "linear-gradient(135deg, #94a3b8 0%, #475569 55%, #1e293b 100%)",
+              ? "linear-gradient(140deg, #34d399 0%, #16a34a 62%, #047857 100%)"
+              : "linear-gradient(140deg, #94a3b8 0%, #475569 62%, #1e293b 100%)",
+            // Shallow and tight. The old 14–20px blur read as a floating balloon;
+            // at this size a pin wants to look dropped on the map, not hovering
+            // over it.
             boxShadow: isActive
-              ? "0 10px 20px -4px rgba(0,0,0,0.4), 0 0 0 3px rgba(255,255,255,0.85)"
-              : "0 6px 14px -4px rgba(0,0,0,0.35)",
+              ? "0 3px 8px -2px rgba(15,23,42,0.45), 0 0 0 2px rgba(255,255,255,0.9)"
+              : "0 2px 5px -1px rgba(15,23,42,0.4)",
           }}
         >
-          {/* Glossy highlight, kept upright by counter-rotating */}
+          {/* Glossy highlight, kept upright by counter-rotating. Kept subtle —
+              a strong specular made these look like 3D balloons at 28px. */}
           <div
             className="absolute rounded-full"
             style={{
-              width: "38%", height: "22%", top: "14%", left: "20%",
-              background: "linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%)",
+              width: "34%", height: "20%", top: "16%", left: "22%",
+              background: "linear-gradient(135deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 70%)",
               transform: "rotate(45deg)",
             }}
           />
@@ -496,18 +565,18 @@ const CityPin = React.memo(function CityPin({
             regardless of the teardrop's own rotation. */}
         <div
           className="absolute rounded-full bg-white"
-          style={{ width: "36%", height: "36%", top: "20%", left: "32%" }}
+          style={{ width: "34%", height: "34%", top: "21%", left: "33%" }}
         />
       </div>
 
-      {/* Ground shadow — breathes opposite the bob so the pin reads as
-          dropped onto the map rather than stuck to it. */}
+      {/* Ground shadow — anchors the pin to the map. */}
       <div
         className="rounded-[50%] bg-black/25"
         style={{
-          width: size * 0.55, height: size * 0.14, marginTop: -2,
-          filter: "blur(2px)",
-          animation: "cityShadowBreathe 3.2s ease-in-out infinite 0.45s",
+          width: size * 0.5, height: size * 0.13, marginTop: -1,
+          // No blur filter and no infinite breathe: a blurred, animating shadow
+          // costs compositing work on every frame and was invisible at this size.
+          opacity: 0.18,
         }}
       />
     </div>
@@ -515,53 +584,86 @@ const CityPin = React.memo(function CityPin({
 });
 
 // ---------------------------------------------------------------------------
-// Sub-city cluster pin — a small teardrop marker for a tight group of nearby
-// companies at street/neighborhood level. Distinct from CityPin (which is
-// deliberately number-free — it's a whole city's aggregate) because a
-// cluster here is a "zoom in for detail" affordance, the same role a count
-// badge plays on every mainstream clustering map (Google Maps, Mapbox).
-// Without this, every company in view renders as its own animated DOM pin
-// with no limit — fine at ~100 companies, real jank at the hundreds a wider
-// data source (Adzuna, self-registration at scale) can add per city.
+// Sub-city cluster bubble.
+//
+// Deliberately the same silhouette and scale as the clustering map people
+// already know: a 40px translucent ring around a 30px solid core, 12px count
+// text, no shadow, flat — so the map reads instantly at a glance. What differs
+// is what the colour *means*: the reference ramps colour by raw density, we
+// ramp it by *hiring share*, so size answers "how many companies here" and
+// colour answers "how many of them are hiring".
+//
+// Uniform size is the point. An earlier version scaled the bubble 18→28px with
+// the count, which made a 3-company village and a 400-company city look
+// different weights for no benefit — the number is already *inside* the circle.
 // ---------------------------------------------------------------------------
+const CLUSTER_RING = 34; // translucent outer ring, px
+const CLUSTER_CORE = 26; // solid inner circle, px
+// Transparent target around the bubble: the visual sits comfortably inside a
+// 42px touch area, so trimming the artwork doesn't make it fiddly to hit.
+const CLUSTER_HIT = 42;
+
+/** 1 240 → "1.2k": keeps the count legible inside a 26px circle at any scale. */
+function formatCount(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return `${k >= 10 ? Math.round(k) : k.toFixed(1)}k`;
+}
+
 const ClusterPin = React.memo(function ClusterPin({
-  count, hiringCount, onClick,
+  clusterId, count, hiringCount, onOpen,
 }: {
-  count: number; hiringCount: number; onClick: () => void;
+  clusterId: number; count: number; hiringCount: number;
+  onOpen: (clusterId: number) => void;
 }) {
   const hasHiring = hiringCount > 0;
-  const size = 30 + Math.min(count, 60) / 60 * 12; // 30–42px, gently scales with size
+  const hiringShare = count > 0 ? hiringCount / count : 0;
+  // Two hiring steps, not a full heat ramp — a completely green map says no more
+  // than a two-tone one and is harder to scan.
+  const core = !hasHiring ? "#64748b" : hiringShare >= 0.5 ? "#16a34a" : "#4ade80";
+  const textColor = !hasHiring || hiringShare >= 0.5 ? "#ffffff" : "#14532d";
+  // Stable identity: `onOpen` is a useCallback in the parent and `clusterId` is
+  // a number, so this memo actually holds. An inline arrow here would be a new
+  // function on every render and would re-render every bubble on the map at
+  // once, on every zoom step.
+  const handleClick = useCallback(() => onOpen(clusterId), [onOpen, clusterId]);
 
   return (
-    <div className="relative flex flex-col items-center cursor-pointer" onClick={onClick}>
+    <div
+      className="relative flex items-center justify-center cursor-pointer"
+      style={{ width: CLUSTER_HIT, height: CLUSTER_HIT }}
+      onClick={handleClick}
+    >
       <div
-        className="relative flex items-center justify-center"
-        style={{ width: size, height: size, animation: "pinBounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}
+        className="cluster-bubble relative flex items-center justify-center"
+        style={{ width: CLUSTER_RING, height: CLUSTER_RING }}
       >
-        {hasHiring && (
-          <span
-            className="pointer-events-none absolute inset-0 rounded-full"
-            style={{ border: "2px solid #22c55e", animation: "ping 2.2s cubic-bezier(0,0,0.2,1) infinite", opacity: 0.4 }}
-          />
-        )}
-        <div
-          className="absolute inset-0 rounded-[50%_50%_50%_0]"
-          style={{
-            transform: "rotate(-45deg)",
-            background: hasHiring
-              ? "linear-gradient(135deg, #4ade80 0%, #16a34a 55%, #047857 100%)"
-              : "linear-gradient(135deg, #64748b 0%, #334155 55%, #1e293b 100%)",
-            boxShadow: "0 6px 14px -4px rgba(0,0,0,0.35)",
-          }}
+        {/* Translucent halo — the same outer/inner two-tone the reference uses,
+            which is what makes a dense field of bubbles scannable instead of a
+            wall of solid dots. */}
+        <span
+          data-cluster-ring
+          className="pointer-events-none absolute rounded-full"
+          style={{ inset: 0, background: `${core}59` }}
         />
-        <span className="relative font-extrabold text-white" style={{ fontSize: size * 0.34 }}>
-          {count}
-        </span>
+        <div
+          data-cluster-core
+          className="relative flex items-center justify-center rounded-full font-bold"
+          style={{
+            width: CLUSTER_CORE,
+            height: CLUSTER_CORE,
+            background: core,
+            color: textColor,
+            // 11px, not 12: at 26px the count has to fit "342" and "1.2k"
+            // without touching the edge.
+            fontSize: 11,
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {formatCount(count)}
+        </div>
       </div>
-      <div
-        className="rounded-[50%] bg-black/25"
-        style={{ width: size * 0.5, height: size * 0.13, marginTop: -2, filter: "blur(2px)" }}
-      />
     </div>
   );
 });
@@ -808,13 +910,18 @@ export function MapWorkspace() {
     if (!map) return;
     const bounds = map.getBounds();
     if (!bounds) return;
-    setBbox({
-      minLat: bounds.getSouth(),
-      minLng: bounds.getWest(),
-      maxLat: bounds.getNorth(),
-      maxLng: bounds.getEast(),
-    });
-    setZoom(map.getZoom());
+    const minLat = bounds.getSouth();
+    const minLng = bounds.getWest();
+    const maxLat = bounds.getNorth();
+    const maxLng = bounds.getEast();
+    // A zero-area or NaN box means the container had no size when this fired
+    // (e.g. the map was hidden for Grid view). Refetching on it returns no
+    // companies and blanks the viewport, so never overwrite the last good box.
+    if (![minLat, minLng, maxLat, maxLng].every(Number.isFinite)) return;
+    if (maxLat <= minLat || maxLng <= minLng) return;
+    setBbox({ minLat, minLng, maxLat, maxLng });
+    // Integer zoom only — see onZoom below for why.
+    setZoom(Math.round(map.getZoom()));
   }, []);
 
   useEffect(() => {
@@ -1035,6 +1142,43 @@ export function MapWorkspace() {
     );
   }, [clusterIndex, bbox, zoom]);
 
+  // Where each company was last drawn *inside a cluster*, so a pin that appears
+  // because a bubble broke apart can slide out from the bubble's spot instead of
+  // snapping into place. This is the split half of the animation the reference
+  // map gets from markercluster's 0.3s transform transition on its markers.
+  //
+  // Zooming in: a cluster's leaves become individual pins, and each one finds
+  // the position its parent bubble occupied a zoom step ago. Zooming out is the
+  // reverse and needs nothing here — the children unmount and the bubble fades
+  // in, which is exactly how the reference handles a merge.
+  const lastClusterPosition = useRef(
+    new globalThis.Map<number, { longitude: number; latitude: number }>()
+  );
+  const spreadOrigins = useMemo(() => {
+    const nowClustered = new globalThis.Map<number, { longitude: number; latitude: number }>();
+    for (const feature of mapClusters) {
+      const props = feature.properties as { cluster?: boolean; cluster_id?: number };
+      if (!props.cluster || props.cluster_id === undefined) continue;
+      const [longitude, latitude] = feature.geometry.coordinates as [number, number];
+      // Every leaf, not a capped sample: the 342-company Bengaluru bubble has to
+      // hand its position to all 342 pins when the user zooms into it.
+      for (const leaf of clusterIndex.getLeaves(props.cluster_id, Infinity)) {
+        nowClustered.set((leaf.properties as CompanyClusterProps).companyId, { longitude, latitude });
+      }
+    }
+
+    const origins = new globalThis.Map<number, { longitude: number; latitude: number }>();
+    for (const feature of mapClusters) {
+      const props = feature.properties as { cluster?: boolean; companyId?: number };
+      if (props.cluster || props.companyId === undefined) continue;
+      const previous = lastClusterPosition.current.get(props.companyId);
+      if (previous) origins.set(props.companyId, previous);
+    }
+
+    lastClusterPosition.current = nowClustered;
+    return origins;
+  }, [mapClusters, clusterIndex]);
+
   const hiringCount = filteredCompanies?.filter((c) => c.active_job_count > 0).length ?? 0;
   const totalCount = filteredCompanies?.length ?? 0;
   // City-level data for overview mode (zoomed out)
@@ -1053,6 +1197,28 @@ export function MapWorkspace() {
   const showEmptyViewport =
     !showCityPins && !isLoading && !isError && filteredCompanies?.length === 0;
 
+  // Stable identity so the memoised bubbles below re-render only when their own
+  // counts change. An inline `() => setOpenClusterId(id)` is a fresh function on
+  // every render, which defeats React.memo for every bubble on screen at once —
+  // i.e. the whole cluster layer would reconcile on each zoom step.
+  const openCluster = useCallback((id: number) => setOpenClusterId(id), []);
+  // Same reason, for the company pins: stable identities keep React.memo doing
+  // its job while the user zooms and pans.
+  // The store action is a fixed reference (zustand defines it once), so listing
+  // it as a dependency keeps the linter happy without making the callback new on
+  // every render.
+  const selectCompany = useCallback((id: number) => setSelectedCompanyId(id), [setSelectedCompanyId]);
+  const hoverCompany = useCallback((id: number) => setHoveredId(id), []);
+  const unhoverCompany = useCallback(() => setHoveredId(null), []);
+  // Geo → screen pixels for the split animation. Stable identity so it doesn't
+  // defeat the pin memoisation. A pure read of the current camera.
+  const projectPoint = useCallback((longitude: number, latitude: number) => {
+    const map = mapRef.current;
+    if (!map) return null;
+    const point = map.project([longitude, latitude]);
+    return { x: point.x, y: point.y };
+  }, []);
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       {/* ── Global CSS ── */}
@@ -1064,6 +1230,36 @@ export function MapWorkspace() {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        /* Hiring ring that breathes outward from the pin. Capped at 1.55×, not
+           2×: the old ring started 6px out and doubled, so a 26px pin threw a
+           ~64px pale disc across a dense street view. This one reads as a pulse
+           without becoming the biggest thing on the map. */
+        /* Only the ring's outer edge shows while it is the same size as the pin,
+           so the pulse becomes visible exactly as it clears the artwork. The
+           previous curve dropped to 0.12 opacity at that same moment — it was
+           animating, and invisible. It now stays strong while it is outside the
+           circle and only fades once it is genuinely clear of it. */
+        @keyframes ringPulse {
+          0% { transform: scale(1); opacity: 0.5; }
+          45% { opacity: 0.38; }
+          78% { opacity: 0.16; }
+          100% { transform: scale(1.75); opacity: 0; }
+        }
+        /* The cluster split. A pin that appears because a bubble broke apart
+           slides out from where that bubble was drawn, so the group visibly
+           spreads instead of popping into place — the effect the reference map
+           gets from markercluster's 0.3s transform/opacity transition. The
+           offset is projected at mount time and passed in as CSS vars. */
+        @keyframes pinSpread {
+          from {
+            transform: translate(var(--spread-x, 0px), var(--spread-y, 0px)) scale(0.55);
+            opacity: 0;
+          }
+          to { transform: translate(0px, 0px) scale(1); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pin-spread, .pin-ring { animation: none !important; }
+        }
         @keyframes pinBounceIn {
           0% { transform: scale(0) translateY(10px); opacity: 0; }
           60% { transform: scale(1.1) translateY(-2px); opacity: 1; }
@@ -1072,6 +1268,19 @@ export function MapWorkspace() {
         @keyframes shimmer {
           from { background-position: -200% 0; }
           to { background-position: 200% 0; }
+        }
+        /* Cluster bubbles pop in as the set splits or merges. Short and only on
+           mount: supercluster hands back a new cluster_id whenever a group
+           really changes, so React remounts exactly those bubbles and nothing
+           else — the transition tracks the data instead of firing on every
+           zoom tick. */
+        @keyframes clusterPop {
+          0% { transform: scale(0.72); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .cluster-bubble { animation: clusterPop 0.16s cubic-bezier(0.34, 1.4, 0.64, 1); }
+        @media (prefers-reduced-motion: reduce) {
+          .cluster-bubble { animation: none; }
         }
         @keyframes newFlash {
           0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
@@ -1100,26 +1309,66 @@ export function MapWorkspace() {
       `}</style>
 
       {viewMode === "grid" && (
-        <CompanyGridView
-          companies={filteredCompanies ?? []}
-          selectedCompanyId={selectedCompanyId}
-          onSelect={setSelectedCompanyId}
-        />
+        <div className="absolute inset-0 z-20 bg-gray-50">
+          <CompanyGridView
+            companies={filteredCompanies ?? []}
+            selectedCompanyId={selectedCompanyId}
+            onSelect={setSelectedCompanyId}
+          />
+        </div>
       )}
 
       <Map
         ref={mapRef}
         reuseMaps
-        style={{ width: "100%", height: "100%", display: viewMode === "map" ? "block" : "none" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          // Kept mounted at full size behind the grid — `display: none` collapsed
+          // it to 0×0, which made MapLibre report an empty bounds and drove a
+          // viewport query that came back with nothing (blank Grid view, plus a
+          // busted bbox to refetch from on the way back).
+          visibility: viewMode === "map" ? "visible" : "hidden",
+          pointerEvents: viewMode === "map" ? "auto" : "none",
+        }}
         initialViewState={{
-          longitude: 78.0,
-          latitude: 12.0,
-          zoom: 6,
+          // Framed so every one of the 15 city pins is *clickable* at startup,
+          // not merely present in the DOM. MapLibre renders 512px tiles, so zoom
+          // controls how much latitude fits: at 4.8 the visible band was lat
+          // 8.4°–28.6°, which clipped Delhi NCR (28.36°, the northern extreme)
+          // behind the site header and Thiruvananthapuram (8.41°, the southern
+          // one) against the bottom edge. Zoom 4.5 plus a touch of north bias
+          // puts the topmost pin at ~y141 and the bottom-most at ~y821, clear of
+          // both the header (0–56) and the floating toolbar (72–116). Verified
+          // by the map audit, which asserts every pin's centre is on-screen *and*
+          // the topmost element at that point.
+          longitude: 79.0,
+          latitude: 18.85,
+          zoom: 4.5,
         }}
         mapStyle={MAP_STYLE_URL}
+        // Tile-handling options — the one place the map was still costing frames
+        // we control. MapLibre cross-fades incoming tiles for 300ms by default,
+        // so a multi-step zoom composites two tile sets at partial opacity for
+        // most of the gesture; 0 makes retiling a hard swap (sharper during
+        // motion, and cheaper). A larger cache keeps tiles around so zooming
+        // back out doesn't re-fetch and re-decode what was just on screen, and
+        // refreshExpiredTiles:false stops silent background refetches of tiles
+        // that are already several months stale anyway. Verified by the map
+        // audit's zoom burst, which no longer hitches on a stacked retile.
+        fadeDuration={0}
+        maxTileCacheSize={256}
+        refreshExpiredTiles={false}
         onLoad={updateBoundsFromMap}
         onMoveEnd={updateBoundsFromMap}
-        onZoom={() => { if (mapRef.current) setZoom(mapRef.current.getZoom()); }}
+        onZoom={(e) => {
+          // Clusters are keyed on Math.round(zoom), so recomputing on every
+          // animation frame redraws the same cluster set ~50x per gesture. The
+          // whole map re-rendered per frame; coalescing to integer steps is
+          // what makes zooming cheap.
+          const next = Math.round(e.target.getZoom());
+          setZoom((prev) => (prev === next ? prev : next));
+        }}
         onClick={() => { setSelectedCompanyId(null); setOpenClusterId(null); }}
         attributionControl={false}
       >
@@ -1171,7 +1420,14 @@ export function MapWorkspace() {
                 label={`${clusterFeature.properties.point_count} companies clustered here, ${clusterFeature.properties.hiringCount} hiring. Activate to list them.`}
                 longitude={longitude}
                 latitude={latitude}
-                anchor="bottom"
+                // anchor="center", not "bottom": the bubble is a flat circle with
+                // no tip, so its centre is the point it marks. "bottom" parked
+                // the circle's bottom edge on the coordinate, floating the whole
+                // 34px bubble 17px north of where the companies actually are
+                // (the marker box measured 42px, so 21px with the hit area).
+                // supercluster hands us the weighted centroid of the members, so
+                // centring the circle is what makes the bubble honest.
+                anchor="center"
                 // The company pins below stop propagation for the same reason:
                 // the marker sits inside the map container, so without this the
                 // click also reaches the Map's onClick, which clears
@@ -1179,13 +1435,14 @@ export function MapWorkspace() {
                 // never opened — "Activate to list them" was a lie.
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();
-                  setOpenClusterId(clusterId);
+                  openCluster(clusterId);
                 }}
               >
                 <ClusterPin
+                  clusterId={clusterId}
                   count={clusterFeature.properties.point_count}
                   hiringCount={clusterFeature.properties.hiringCount}
-                  onClick={() => setOpenClusterId(clusterId)}
+                  onOpen={openCluster}
                 />
               </AccessibleMarker>
             );
@@ -1205,7 +1462,9 @@ export function MapWorkspace() {
               }
               longitude={company.longitude}
               latitude={company.latitude}
-              anchor="bottom"
+              // Centre-anchored for the same reason as the bubbles above: the pin
+              // is a circle, and "bottom" drew it ~12px north of its coordinate.
+              anchor="center"
               onClick={(e) => {
                 e.originalEvent.stopPropagation();
                 setSelectedCompanyId(company.id);
@@ -1216,9 +1475,11 @@ export function MapWorkspace() {
                 isSelected={company.id === selectedCompanyId}
                 isHovered={company.id === hoveredId}
                 zoom={zoom}
-                onClick={() => setSelectedCompanyId(company.id)}
-                onHover={() => setHoveredId(company.id)}
-                onLeave={() => setHoveredId(null)}
+                onSelect={selectCompany}
+                onHover={hoverCompany}
+                onLeave={unhoverCompany}
+                spreadFrom={spreadOrigins.get(company.id)}
+                project={projectPoint}
               />
             </AccessibleMarker>
           );
@@ -1303,7 +1564,11 @@ export function MapWorkspace() {
       </Map>
 
       {/* ── Top toolbar ── */}
-      <div className="absolute left-4 right-4 top-4 flex flex-wrap items-center gap-2">
+      {/* z-30, above the grid overlay's z-20. The grid reserves pt-24 for this
+          bar, but with no z-index of its own the bar painted *under* the
+          overlay, so search, filters and the company count all vanished the
+          moment you switched to Grid. */}
+      <div className="absolute left-4 right-4 top-4 z-30 flex flex-wrap items-center gap-2">
         {/* Search with autocomplete */}
         <div className="relative min-w-[180px] flex-1 sm:max-w-sm" ref={searchRef}>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-700 z-10" />
@@ -1620,7 +1885,9 @@ export function MapWorkspace() {
                 ? `${totalCount} of 500+ companies`
                 : `${totalCount} compan${totalCount !== 1 ? 'ies' : 'y'} in view`}
             </span>
-            {companiesCapped && (
+            {/* Map-only: in Grid the map is behind a full-screen overlay, so
+                this button would zoom something the user cannot see. */}
+            {companiesCapped && viewMode === "map" && (
               <button
                 type="button"
                 onClick={() => mapRef.current?.zoomIn({ duration: 300 })}
@@ -1670,7 +1937,11 @@ export function MapWorkspace() {
 
       {/* ── Zoom controls (map view only) ── */}
       {viewMode === "map" && (
-      <div className="absolute right-4 top-4 flex flex-col overflow-hidden rounded-xl bg-white shadow-lg">
+      // z-40, above the toolbar's z-30. Both sit at right-4/top-4 and this
+      // block used to win on DOM order alone; giving the toolbar a z-index to
+      // clear the Grid overlay would otherwise have parked it on top of these
+      // buttons and swallowed every click.
+      <div className="absolute right-4 top-4 z-40 flex flex-col overflow-hidden rounded-xl bg-white shadow-lg">
         <button
           type="button"
           // Icon-only buttons need an explicit name — the SVG alone leaves

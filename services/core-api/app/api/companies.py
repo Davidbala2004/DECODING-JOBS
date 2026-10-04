@@ -406,6 +406,114 @@ async def seed_company(
 
 
 # ---------------------------------------------------------------------------
+# Company enrichment (ingestion pipeline → website/logo coverage)
+#
+# Today, three of every four companies reach us from Adzuna/Greenhouse/Lever as
+# nothing but a name + a city. They have no website, and the app resolves every
+# logo through /api/logo?domain=<company.website_url host> — so a missing
+# website means a blank pin. These two endpoints let the enrichment stage of
+# the pipeline drain that backlog: one lists what still needs a domain, the
+# other writes the resolved domain back.
+# ---------------------------------------------------------------------------
+
+
+class CompanyEnrichmentCandidate(BaseModel):
+    """A company the pipeline still needs to enrich (no website yet)."""
+
+    id: int
+    name: str
+    city: str | None = None
+
+
+@router.get(
+    "/enrichment/queue",
+    response_model=list[CompanyEnrichmentCandidate],
+    summary="Companies still missing a website, oldest-unenriched first (ingestion only)",
+    dependencies=[Depends(require_ingestion_key)],
+)
+async def enrichment_candidates(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(500, ge=1, le=5000, description="Max candidates to return"),
+    offset: int = Query(0, ge=0, description="Skip this many candidates (for pagination)"),
+    include_linkedin_missing: bool = Query(
+        False,
+        description="Also return companies that have a website but no LinkedIn URL",
+    ),
+) -> list[CompanyEnrichmentCandidate]:
+    """Returns the enrichment queue. Deliberately excludes companies that
+    already carry a real website so repeat runs make forward progress and a
+    run interrupted halfway simply resumes."""
+    if include_linkedin_missing:
+        condition = (Company.website_url.is_(None)) | (Company.linkedin_url.is_(None))
+    else:
+        condition = Company.website_url.is_(None)
+
+    result = await db.execute(
+        select(Company)
+        .where(condition, Company.status == "active")
+        .order_by(Company.id)
+        .offset(offset)
+        .limit(limit)
+    )
+    companies = result.scalars().all()
+    return [
+        CompanyEnrichmentCandidate(id=c.id, name=c.name, city=c.city) for c in companies
+    ]
+
+
+class CompanyEnrichmentPatch(BaseModel):
+    """One company's resolved enrichment values."""
+
+    model_config = {"extra": "forbid"}
+
+    id: int
+    website_url: str | None = None
+    linkedin_url: str | None = None
+
+
+class CompanyEnrichRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    updates: list[CompanyEnrichmentPatch] = Field(..., min_length=1, max_length=1000)
+
+
+@router.post(
+    "/enrich",
+    summary="Apply resolved website/LinkedIn data to companies (ingestion only)",
+    dependencies=[Depends(require_ingestion_key)],
+)
+async def enrich_companies(
+    payload: CompanyEnrichRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Batch-applies enrichment. Only ever *fills* a field that is currently
+    empty — it never overwrites a website a founder verified or a previous run
+    resolved, so a bad upstream guess on a later run can't clobber good data.
+    """
+    ids = [u.id for u in payload.updates]
+    result = await db.execute(select(Company).where(Company.id.in_(ids)))
+    by_id = {c.id: c for c in result.scalars().all()}
+
+    updated = 0
+    for patch in payload.updates:
+        company = by_id.get(patch.id)
+        if company is None:
+            continue
+        changed = False
+        if patch.website_url and not company.website_url:
+            company.website_url = patch.website_url
+            changed = True
+        if patch.linkedin_url and not company.linkedin_url:
+            company.linkedin_url = patch.linkedin_url
+            changed = True
+        if changed:
+            updated += 1
+
+    await db.commit()
+    return {"requested": len(payload.updates), "updated": updated}
+
+
+# ---------------------------------------------------------------------------
 # Founder self-registration (public — verified by work-email domain match)
 # ---------------------------------------------------------------------------
 

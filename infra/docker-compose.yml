@@ -43,7 +43,12 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-decoding_admin}:${POSTGRES_PASSWORD:-decoding_pass_dev}@postgis:5432/${POSTGRES_DB:-decoding_jobs}
       ENVIRONMENT: development
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3333,http://127.0.0.1:3000}
+      # Must include BOTH localhost and 127.0.0.1 forms of the web dev origin:
+      # the browser sends the exact host in the address bar as the Origin, so a
+      # page opened at 127.0.0.1:3333 is rejected if only localhost:3333 is
+      # allowlisted (preflight 400 -> "Something went wrong reaching the
+      # assistant" in the UI).
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3333,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002,http://127.0.0.1:3333}
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:

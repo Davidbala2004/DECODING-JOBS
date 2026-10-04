@@ -30,13 +30,26 @@ from app.schemas import (
     ChatRequest,
     ChatResponse,
 )
-from app.services.groq_client import GroqUnavailable, chat_completion
+from app.services.groq_client import (
+    GroqBadRequest,
+    GroqRateLimited,
+    GroqUnavailable,
+    chat_completion,
+)
 
 logger = logging.getLogger("decoding_jobs.core_api.chat")
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 MAX_TOOL_ROUNDS = 4
+
+# Groq's free tier allows 8000 tokens/minute, and a tool-using turn spends it
+# on the system prompt, the tool schemas and the tool results before it writes
+# a word of the answer. 3000 reserved on *every* round pushed a two-round turn
+# over the cap on its own, so the assistant failed on essentially every real
+# search. 1800 still fits a full resume rewrite (the long case) — the model
+# rarely needs more, and finish_reason=length is handled below.
+MAX_REPLY_TOKENS = 1800
 
 _SYSTEM_PROMPT = """You are the AI Job Search Assistant for DECODING JOBS, a map-based job \
 search tool for tech students and job seekers in India. You help people find real jobs and \
@@ -92,7 +105,11 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Role, title, or skill keywords"},
-                    "city": {"type": "string", "description": "Optional city to scope the search to"},
+                    # type: ["string", "null"] — the model routinely sends an
+                    # explicit null for an optional arg it has nothing for.
+                    # Declaring it string-only made Groq reject the whole call
+                    # with a 400 (tool_use_failed) instead of ignoring the null.
+                    "city": {"type": ["string", "null"], "description": "Optional city to scope the search to"},
                 },
                 "required": ["query"],
             },
@@ -106,11 +123,19 @@ TOOLS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "sector": {"type": "string", "description": "e.g. AI, Fintech, SaaS, Consumer"},
-                    "city": {"type": "string"},
-                    "stage": {"type": "string", "description": "e.g. Seed, Series A, Growth, Public"},
-                    "hiring_only": {"type": "boolean", "description": "Only companies with open roles"},
+                    # Every optional arg is nullable. gpt-oss routinely sends an
+                    # explicit null for one it has nothing for, and a
+                    # string-only schema made Groq reject the entire call with
+                    # a 400 (tool_use_failed) instead of ignoring the null.
+                    "sector": {"type": ["string", "null"], "description": "e.g. AI, Fintech, SaaS, Consumer"},
+                    "city": {"type": ["string", "null"]},
+                    "stage": {"type": ["string", "null"], "description": "e.g. Seed, Series A, Growth, Public"},
+                    "hiring_only": {"type": ["boolean", "null"], "description": "Only companies with open roles"},
                 },
+                # No required args — "show me AI startups" is a complete
+                # question, and a required field forced the model to invent a
+                # value or ask for a field the user was never asked to provide.
+                "required": [],
             },
         },
     },
@@ -135,7 +160,7 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "company_name": {"type": "string"},
-                    "job_title": {"type": "string", "description": "Optional specific role title"},
+                    "job_title": {"type": ["string", "null"], "description": "Optional specific role title"},
                 },
                 "required": ["company_name"],
             },
@@ -283,6 +308,31 @@ _TOOL_IMPLS = {
 
 def _fallback_response(text: str) -> ChatResponse:
     return ChatResponse(reply=text, jobs=[], companies=[])
+
+
+# Fields the model needs to reason about; everything else (apply_url,
+# website_url, sector, the whole company payload) is still sent to the client
+# for the cards but costs ~40% of the per-minute token budget when echoed back
+# into the conversation. Dropping it from the *model's* copy is what keeps a
+# multi-round turn inside Groq's free tier.
+_JOB_FIELDS_FOR_MODEL = ("id", "title", "company_name", "city", "work_mode")
+_COMPANY_FIELDS_FOR_MODEL = ("id", "name", "sector", "city", "stage", "active_job_count")
+
+
+def _compact_tool_result(name: str, result: Any) -> Any:
+    """Slims a tool result down to the fields the model actually reasons over.
+
+    The full result is still what lands in `collected_jobs`/`collected_companies`
+    and therefore in the cards the user sees — this only affects what gets
+    replayed into the next round's context.
+    """
+    if not isinstance(result, list):
+        return result
+    if name == "search_jobs":
+        return [{k: j.get(k) for k in _JOB_FIELDS_FOR_MODEL} for j in result]
+    if name == "list_companies":
+        return [{k: c.get(k) for k in _COMPANY_FIELDS_FOR_MODEL} for c in result]
+    return result
 
 
 def _conversation_title(first_message: str) -> str:
@@ -456,13 +506,37 @@ async def _run_chat(payload: ChatRequest, db: AsyncSession, user: User | None) -
     collected_jobs: dict[int, dict] = {}
     collected_companies: dict[int, dict] = {}
 
+    # Cache of already-run tool calls, keyed by name+args. gpt-oss sometimes
+    # re-issues an identical call on every round instead of reading the result
+    # it was just handed — the round budget then runs out and the user is told
+    # "I'm having trouble putting together a final answer" even though the
+    # results are already in hand. Replaying the cached result costs no DB
+    # query and no extra tokens.
+    executed: dict[str, Any] = {}
+
     try:
         for round_num in range(MAX_TOOL_ROUNDS):
+            final_round = round_num == MAX_TOOL_ROUNDS - 1
             # A full resume rewrite or a detailed prep guide runs long, plus
             # gpt-oss spends tokens on an internal `reasoning` field before
             # the visible content — 1200 was cutting real answers off
             # mid-sentence (finish_reason=length).
-            data = await chat_completion(messages, tools=TOOLS, max_tokens=3000)
+            if final_round:
+                # Nudge, do NOT drop the tools. Omitting `tools` makes Groq
+                # default tool_choice to "none", and gpt-oss ignores that and
+                # calls a tool anyway — Groq then answers 400
+                # "Tool choice is none, but model called a tool", which reached
+                # the user as a generic error on the last round of long chats.
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Answer now in prose from the results you already have. "
+                            "Do not call any more tools."
+                        ),
+                    }
+                )
+            data = await chat_completion(messages, tools=TOOLS, max_tokens=MAX_REPLY_TOKENS)
             message = data["choices"][0]["message"]
             tool_calls = message.get("tool_calls")
             logger.info(
@@ -481,29 +555,54 @@ async def _run_chat(payload: ChatRequest, db: AsyncSession, user: User | None) -
                 )
 
             # Replay only the spec fields — the raw response also carries a
-            # `reasoning` field (gpt-oss models) and omits `content` entirely
-            # rather than nulling it, both of which appear to confuse Groq's
-            # message validation on the next turn and made it re-issue the
-            # same tool call forever instead of ever using the tool result.
+            # `reasoning` field (gpt-oss models) and omits `content` (rather
+            # than nulling it), both of which confuse Groq's message validation
+            # on the next turn. `content` is coerced to "" because Groq rejects
+            # content=None on an assistant tool-call message with a 400, which
+            # reached the user as "Something went wrong on my end".
             messages.append(
                 {
                     "role": "assistant",
-                    "content": message.get("content"),
+                    "content": message.get("content") or "",
                     "tool_calls": tool_calls,
                 }
             )
             for call in tool_calls:
                 name = call["function"]["name"]
+                raw_args = call["function"]["arguments"] or "{}"
                 try:
-                    args = json.loads(call["function"]["arguments"] or "{}")
+                    args = json.loads(raw_args)
                 except json.JSONDecodeError:
                     args = {}
 
-                impl = _TOOL_IMPLS.get(name)
-                if impl is None:
-                    tool_result: Any = {"error": f"Unknown tool {name}"}
+                cache_key = f"{name}:{raw_args}"
+                if cache_key in executed:
+                    # Already run this exact call — replay the result instead of
+                    # hitting the database again.
+                    tool_result = executed[cache_key]
                 else:
-                    tool_result = await impl(db, **args)
+                    impl = _TOOL_IMPLS.get(name)
+                    if impl is None:
+                        tool_result: Any = {"error": f"Unknown tool {name}"}
+                    else:
+                        try:
+                            tool_result = await impl(db, **args)
+                        except TypeError as exc:
+                            # Malformed tool call: the model emitted args that
+                            # don't match the tool signature (missing/extra/
+                            # wrong-typed). Feed the error back to the model so
+                            # it can correct itself next round instead of
+                            # crashing the whole request with a 500.
+                            logger.warning(
+                                "tool %s called with bad args %s: %s", name, args, exc
+                            )
+                            tool_result = {
+                                "error": (
+                                    f"Invalid arguments for {name}. "
+                                    "Use only the documented parameters with correct types."
+                                )
+                            }
+                    executed[cache_key] = tool_result
 
                 if name == "search_jobs" and isinstance(tool_result, list):
                     for j in tool_result:
@@ -517,14 +616,63 @@ async def _run_chat(payload: ChatRequest, db: AsyncSession, user: User | None) -
                         "role": "tool",
                         "tool_call_id": call["id"],
                         "name": name,
-                        "content": json.dumps(tool_result),
+                        # Compacted: the model only needs enough to write its
+                        # commentary — the cards the user sees are built from
+                        # the full objects collected above.
+                        "content": json.dumps(_compact_tool_result(name, tool_result)),
                     }
                 )
 
+        # Ran out of rounds with results in hand — hand over the cards rather
+        # than a canned apology. The user came for listings; they got listings.
+        if collected_jobs or collected_companies:
+            return ChatResponse(
+                reply="Here's what I found — tap any card below to see it on the map.",
+                jobs=[ChatJobResult(**j) for j in collected_jobs.values()],
+                companies=[ChatCompanyResult(**c) for c in collected_companies.values()],
+            )
         return _fallback_response(
-            "I found some options but I'm having trouble putting together a final answer — "
-            "try narrowing your request a bit."
+            "I couldn't find anything for that — try a role title, a city, or a skill."
         )
+    except GroqRateLimited:
+        # Honest and actionable: the key is fine, the per-minute budget is spent.
+        return _fallback_response(
+            "I'm getting more questions than I can answer right now — give it a few seconds and ask again."
+        )
+    except GroqBadRequest as exc:
+        # gpt-oss occasionally emits a tool call that fails Groq's own schema
+        # validation (a null where a string was declared, a malformed
+        # generation). The user's question is still answerable, so retry once
+        # with no tools and pure prose instead of apologizing.
+        logger.warning("retrying chat without tools after Groq 400: %s", exc)
+        try:
+            # Strip the tool-call/tool-result messages too: a message that
+            # carries tool_calls is itself invalid to Groq when no tools are
+            # declared, so replaying it would earn a second 400.
+            plain_messages = [
+                m for m in messages if m["role"] != "tool" and "tool_calls" not in m
+            ]
+            if collected_jobs or collected_companies:
+                plain_messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Answer in prose using the results you already gathered. "
+                            "The app renders the matching jobs/companies as cards "
+                            "below your reply, so just comment on what you found."
+                        ),
+                    }
+                )
+            data = await chat_completion(plain_messages, max_tokens=MAX_REPLY_TOKENS)
+            reply = data["choices"][0]["message"].get("content") or ""
+            return ChatResponse(
+                reply=reply,
+                jobs=[ChatJobResult(**j) for j in collected_jobs.values()],
+                companies=[ChatCompanyResult(**c) for c in collected_companies.values()],
+            )
+        except Exception:
+            logger.exception("tool-free retry also failed")
+            return _fallback_response("Something went wrong on my end — please try again.")
     except GroqUnavailable:
         return _fallback_response(
             "The AI assistant isn't configured yet — set GROQ_API_KEY on the server to enable it."

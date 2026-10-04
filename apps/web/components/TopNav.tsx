@@ -15,10 +15,10 @@ import {
   LogOut,
   ShieldOff,
   UserRound,
+  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { BloomIcon } from "@/components/icons/BloomIcon";
 import { Switch } from "@/components/ui/switch";
 import { useIdentityStore } from "@/lib/identityStore";
 import { useLiveUpdatesStore } from "@/lib/liveUpdatesStore";
@@ -64,9 +64,9 @@ function NavLink({
   );
 }
 
-// Its own component (not routed through NavLink's generic `icon` prop)
-// because BloomIcon needs real props — a pulsing center node, variable
-// stroke weight — that a plain lucide icon swap-in doesn't.
+// Its own component (not routed through NavLink's generic `icon` prop) because
+// the mark carries its own active treatment — a heavier stroke and a slow
+// pulse — rather than NavLink's flat colour swap.
 function AiAssistantLink({ active }: { active: boolean }) {
   return (
     <Link
@@ -79,7 +79,15 @@ function AiAssistantLink({ active }: { active: boolean }) {
       {active && (
         <span className="absolute inset-0 rounded-lg bg-green-50" style={{ animation: "navActiveFadeIn 0.2s ease-out" }} />
       )}
-      <BloomIcon className="relative h-[18px] w-[18px]" active={active} />
+      {/* Lucide's sparkle — the standard "AI" glyph, so the nav reads as one
+          icon family instead of a bespoke mark. Keeps the live/thinking pulse
+          only while the assistant is the current page, where it means
+          something; as a static glyph it would just be noise. */}
+      <Sparkles
+        className={cn("relative h-[18px] w-[18px]", active && "animate-pulse")}
+        strokeWidth={active ? 2.2 : 1.9}
+        aria-hidden="true"
+      />
       <span className="relative hidden sm:inline">AI Assistant</span>
       {active && (
         <span className="absolute inset-x-2.5 -bottom-[9px] h-0.5 rounded-full bg-green-500 sm:inset-x-3" />
@@ -301,7 +309,9 @@ export function TopNav() {
       `}</style>
 
       {/* Logo / Brand — doubles as the home/map link */}
-      <Link href="/" className="flex items-center gap-2 mr-4 shrink-0 sm:gap-2.5 sm:mr-8">
+      {/* Tighter margins at the base breakpoint: icon-only labels plus two
+          separators and a toggle overflow a 360px header by ~9px otherwise. */}
+      <Link href="/" className="flex items-center gap-2 mr-2 shrink-0 sm:gap-2.5 sm:mr-8">
         {/* Brand mark — deliberately NOT a MapPin. The pin glyph is the city
             filter and the location rows; reusing it here made the product's
             own logo read as "a place". A DJ monogram is unmistakably the mark. */}
@@ -313,7 +323,7 @@ export function TopNav() {
         </span>
       </Link>
 
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="flex items-center gap-0.5 ml-auto sm:gap-1">
         <AiAssistantLink active={pathname === "/assistant"} />
 
         <NavLink

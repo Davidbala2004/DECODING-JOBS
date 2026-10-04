@@ -15,10 +15,10 @@ import {
   X,
   ChevronDown,
   PanelLeft,
+  Sparkles,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { BloomIcon } from "@/components/icons/BloomIcon";
 import { useMapSelectionStore } from "@/lib/store";
 import { useIdentityStore } from "@/lib/identityStore";
 import {
@@ -176,7 +176,12 @@ export function ChatAssistant({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const resumeMenuRef = useRef<HTMLDivElement>(null);
+  // False once the reader scrolls up away from the newest message. While it is
+  // false the view stops auto-following, so a reply never yanks the page out
+  // from under someone re-reading an earlier answer.
+  const stickToBottomRef = useRef(true);
   const seededJobRef = useRef<number | null>(null);
   // Tracks the last conversationId *we* produced (new chat / first message) —
   // lets the load-history effect tell "the sidebar picked a different one"
@@ -287,6 +292,8 @@ export function ChatAssistant({
     const nextTurns: Turn[] = [...turns, { role: "user", content: trimmed }];
     setTurns(nextTurns);
     setInput("");
+    // Sending is an explicit request to follow the conversation again.
+    stickToBottomRef.current = true;
 
     const history: ChatMessage[] = nextTurns.map((t) => ({ role: t.role, content: t.content }));
     chatMutation.mutate({ messages: history, resumeId: activeResumeId, jobId, conversationId });
@@ -354,8 +361,21 @@ export function ChatAssistant({
   }, [contextJob]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (!stickToBottomRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [turns, isBusy]);
+
+  // The composer grows with the prompt instead of clipping a single line —
+  // prompts here are often a paragraph of context. Capped at 160px so a pasted
+  // essay cannot push the conversation off screen.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [input]);
 
   const hasStarted = turns.length > 0;
 
@@ -416,7 +436,7 @@ export function ChatAssistant({
         </div>
       )}
       <form
-        className="flex items-center gap-2"
+        className="flex items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
@@ -441,11 +461,25 @@ export function ChatAssistant({
         >
           <Paperclip className="h-4 w-4" />
         </button>
-        <input
+        <textarea
+          ref={inputRef}
           value={input}
+          rows={1}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about jobs, companies, or interview prep…"
-          className="h-11 flex-1 rounded-xl border border-gray-200 bg-gray-50/60 px-4 text-sm outline-none transition-all focus:border-green-300 focus:bg-white focus:ring-4 focus:ring-green-400/15"
+          onKeyDown={(e) => {
+            // Enter sends, Shift+Enter starts a new line — what every chat
+            // product does, and the only way to write a multi-line prompt.
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send(input);
+            }
+          }}
+          // Kept short on purpose: the composer textarea is only ~220px wide
+          // at 360px, so any longer placeholder wraps and looks broken against
+          // the one-row height. The full hint ("…or interview prep") already
+          // lives in the header subtitle, so nothing is lost.
+          placeholder="Ask about jobs…"
+          className="scroll-thin min-h-11 flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3 text-sm leading-relaxed outline-none transition-all focus:border-green-300 focus:bg-white focus:ring-4 focus:ring-green-400/15"
         />
         <button
           type="submit"
@@ -497,7 +531,7 @@ export function ChatAssistant({
           </button>
         )}
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-md shadow-green-500/20">
-          <BloomIcon className="h-4 w-4 text-white" />
+          <Sparkles className="h-4 w-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-gray-900">AI Job Search Assistant</p>
@@ -524,36 +558,52 @@ export function ChatAssistant({
 
       {!hasStarted ? (
         // Claude/ChatGPT-style empty state: greeting + composer centered together.
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-24" style={{ animation: "heroFadeIn 0.35s ease-out both" }}>
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
-              <BloomIcon className="h-7 w-7 text-green-700" />
+        <div
+          className="scroll-thin flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-6 sm:py-10"
+          style={{ animation: "heroFadeIn 0.35s ease-out both" }}
+        >
+          {/* my-auto, not justify-center. justify-center on a flex column that
+              overflows clips the *top* — on a short phone the greeting and the
+              attach button were cut off with no way to scroll to them. */}
+          <div className="my-auto flex w-full flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 shadow-inner">
+                <Sparkles className="h-7 w-7 text-green-700" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-gray-900">What are you looking for?</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Ask about real jobs and companies, or attach your resume for feedback.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-base font-semibold text-gray-900">What are you looking for?</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Ask about real jobs and companies, or attach your resume for feedback.
-              </p>
+            {composer}
+            <div className="flex flex-wrap justify-center gap-2">
+              {STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => send(prompt)}
+                  className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
-          </div>
-          {composer}
-          <div className="flex flex-wrap justify-center gap-2">
-            {STARTER_PROMPTS.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                onClick={() => send(prompt)}
-                className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-all hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-              >
-                {prompt}
-              </button>
-            ))}
           </div>
         </div>
       ) : (
         <>
           {/* Messages */}
-          <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          <div
+            ref={scrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              stickToBottomRef.current =
+                el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+            }}
+            className="scroll-thin min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-6"
+          >
             <div className="mx-auto flex max-w-3xl flex-col gap-4">
               {turns.map((turn, i) => (
                 <div
@@ -567,9 +617,21 @@ export function ChatAssistant({
                       turn.role === "user" ? "bg-gray-100 text-gray-500" : "bg-green-600 text-white"
                     )}
                   >
-                    {turn.role === "user" ? <User className="h-3.5 w-3.5" /> : <BloomIcon className="h-3.5 w-3.5" />}
+                    {turn.role === "user" ? <User className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
                   </div>
-                  <div className={cn("flex flex-col gap-2", turn.role === "user" ? "max-w-[85%] items-end" : "max-w-[95%]")}>
+                  <div
+                    className={cn(
+                      "flex flex-col gap-2",
+                      turn.role === "user"
+                        ? "max-w-[85%] items-end"
+                        // min-w-0 + flex-1, not max-w-[95%]. The avatar beside this
+                        // column already takes ~38px, so "95% of the row" plus the
+                        // avatar overflowed the container. At desktop width 95% of
+                        // 768px still fit, so it went unnoticed — on a phone it
+                        // pushed the job cards off the right edge.
+                        : "min-w-0 flex-1 items-start"
+                    )}
+                  >
                     <div
                       className={cn(
                         "rounded-xl px-3.5 py-2.5 shadow-sm",
@@ -602,7 +664,7 @@ export function ChatAssistant({
               {isBusy && (
                 <div className="flex gap-2.5">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white">
-                    <BloomIcon className="h-3.5 w-3.5" />
+                    <Sparkles className="h-3.5 w-3.5" />
                   </div>
                   <div className="flex items-center gap-1 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
                     {[0, 1, 2].map((i) => (
@@ -619,7 +681,14 @@ export function ChatAssistant({
           </div>
 
           {/* Input */}
-          <div className="shrink-0 border-t border-gray-100 bg-white p-3">{composer}</div>
+          {/* paddingBottom carries env(safe-area-inset-bottom) so the composer
+              clears the iOS home indicator instead of sitting under it. */}
+          <div
+            className="shrink-0 border-t border-gray-100 bg-white px-3 pt-3"
+            style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+          >
+            {composer}
+          </div>
         </>
       )}
     </div>

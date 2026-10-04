@@ -514,3 +514,39 @@ class ChatMessageRecord(Base):
 
     conversation: Mapped["ChatConversation"] = relationship(back_populates="messages")
     resume: Mapped["Resume | None"] = relationship()
+
+
+class FeedbackSubmission(Base):
+    """One submission from the private-beta tester feedback page.
+
+    Public and unauthenticated by design (testers have no account), so it is
+    rate-limited per IP and never exposes anything back to the caller. `raw`
+    keeps the exact request body, so a question added to the form is captured
+    even before a dedicated column exists for it.
+    """
+
+    __tablename__ = "feedback_submissions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    tester: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    quote_ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    rating_map: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_search: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_company: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_assistant: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_tracker: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_auth: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rating_overall: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    confused: Mapped[str | None] = mapped_column(Text, nullable=True)
+    liked: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anything: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, default="tester-feedback")
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    raw: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

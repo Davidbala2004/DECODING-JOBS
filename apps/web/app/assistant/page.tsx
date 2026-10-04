@@ -11,7 +11,15 @@ export const metadata: Metadata = {
 
 export default function AssistantPage() {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-white">
+    // 100dvh, not 100vh. On mobile browsers 100vh is measured *with the URL bar
+    // hidden*, so the real visible height is smaller and the composer and the
+    // last message end up underneath the browser chrome. The h-screen class
+    // stays on as the fallback for anything without dvh support. w-full, not
+    // w-screen: w-screen ignores the scrollbar and can add a horizontal scroll.
+    <div
+      className="flex h-screen w-full flex-col overflow-hidden bg-white"
+      style={{ height: "100dvh" }}
+    >
       <TopNav />
       <Suspense fallback={null}>
         <AssistantWorkspace />

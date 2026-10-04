@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFRA_DIR="$REPO_ROOT/infra"
 WEB_DIR="$REPO_ROOT/apps/web"
 API_BASE="http://localhost:8000"
-WEB_BASE="http://localhost:3000"
+WEB_BASE="http://localhost:3333"
 WEB_LOG="${TMPDIR:-/tmp}/decoding-jobs-web.log"
 
 pass() { echo "✅ $1"; }

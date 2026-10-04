@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     # means alert emails are logged, not sent — see services/sendgrid_client.py.
     SENDGRID_API_KEY: str | None = None
     SENDGRID_FROM_EMAIL: str | None = None
+    # Where tester-feedback notifications are emailed (comma-separated for
+    # several inboxes). Needs SENDGRID_API_KEY + SENDGRID_FROM_EMAIL set; with
+    # those unset, submissions are still stored in Postgres, just not emailed.
+    FEEDBACK_NOTIFY_EMAIL: str | None = None
 
     # Shared secret the ingestion pipeline (scripts/fetch-real-jobs.mjs) sends
     # as `X-Ingestion-Key` to prove it's not a random caller. Unlike the

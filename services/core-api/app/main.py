@@ -8,10 +8,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.api import alerts, applications, auth, chat, companies, emails, jobs, logos, recruiters, resumes, users
+from app.api import alerts, applications, auth, chat, companies, emails, feedback, jobs, logos, recruiters, resumes, users
 from app.core.config import get_settings
 from app.db.session import engine
 
@@ -74,6 +74,31 @@ app.add_middleware(
 )
 
 
+# The tester feedback page is hosted on a separate origin (Vercel/Netlify) whose
+# URL isn't known at build time, so the normal allowlist can't cover it. Allow
+# any origin for THIS ONE endpoint only: it is public and unauthenticated by
+# design, sends no cookies/credentials, and is rate-limited per client. Added
+# after CORSMiddleware so it runs first and handles the preflight itself
+# (Starlette runs the most-recently-added middleware outermost).
+@app.middleware("http")
+async def feedback_cors(request: Request, call_next):
+    if request.url.path.rstrip("/").endswith("/feedback"):
+        if request.method == "OPTIONS":
+            return Response(
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Accept",
+                    "Access-Control-Max-Age": "86400",
+                },
+            )
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """One structured line per request: method, path, status, duration.
@@ -106,6 +131,7 @@ app.include_router(chat.router, prefix=settings.API_V1_PREFIX)
 app.include_router(alerts.router, prefix=settings.API_V1_PREFIX)
 app.include_router(recruiters.router, prefix=settings.API_V1_PREFIX)
 app.include_router(auth.router, prefix=settings.API_V1_PREFIX)
+app.include_router(feedback.router, prefix=settings.API_V1_PREFIX)
 
 
 @app.exception_handler(Exception)

@@ -1,8 +1,9 @@
 /**
  * Browser-level verification for the DECODING JOBS web app.
  *
- * Runs against a Next.js dev server already serving at http://localhost:3000
- * (see scripts/verify-stack.sh for the orchestrated full-stack run). It proves
+ * Runs against a Next.js dev server already serving at http://localhost:3333
+ * (this project's dev port — see FRONTEND_URL in services/core-api/.env).
+ * It proves
  * the shell renders, the map data loads, and selecting a company on the client
  * propagates through state into the detail panel — over the real DOM.
  *
@@ -16,7 +17,7 @@
 
 import { chromium } from "playwright";
 
-const WEB_URL = process.env.WEB_URL ?? "http://localhost:3000";
+const WEB_URL = process.env.WEB_URL ?? "http://localhost:3333";
 const TIMEOUT_MS = 15_000;
 
 let exitCode = 0;

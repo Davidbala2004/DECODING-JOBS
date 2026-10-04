@@ -18,31 +18,43 @@ Open `index.html` and edit the `CONFIG` block near the top of the `<script>`:
 
 ```js
 const CONFIG = {
-  endpoint: "",                                    // ← paste a Formspree URL here
+  apiBase: "",                                   // ← your core API origin, e.g. "https://your-api.onrender.com"
   fallbackEmail: "feedback@decodingjobs.app",      // ← change to an inbox you read
   appUrl: "",                                      // ← the build you want testers to use
 };
 ```
 
+Submissions POST to `${apiBase}/api/v1/feedback` and are stored in **this
+project's own PostgreSQL** (`feedback_submissions` table) — no third-party form
+service, no data leaving your database. See the core-api router at
+`services/core-api/app/api/feedback.py`.
+
 | Setting | What it does |
 | --- | --- |
-| `endpoint` | Where submissions are POSTed. **Recommended.** Leave empty only if you accept the mailto fallback. |
-| `fallbackEmail` | Used when `endpoint` is empty, or when a submission fails. Opens the tester's mail client with the answers pre-filled. **Change this — the default is a placeholder.** |
+| `apiBase` | Your deployed core API origin, no trailing slash (e.g. `https://decoding-jobs-api.onrender.com`, or `http://localhost:8000` locally). **Set this — otherwise submissions fall back to mailto and are not captured.** |
+| `fallbackEmail` | Used when `apiBase` is empty, or a submission fails. Opens the tester's mail client with the answers pre-filled. **Change this — the default is a placeholder.** |
 | `appUrl` | When set, shows an "Open the app →" button in the header so testers can jump straight to what they're testing. |
 
-### Getting an `endpoint` (Formspree, free)
+**Testing without editing the file:** append `?api=https://your-api` to the page
+URL to override `apiBase` for one session.
 
-1. Sign up at <https://formspree.io> (Google login is fine).
-2. **New form** → name it e.g. `Decoding Jobs testers` → set the notification email.
-3. Copy the endpoint, which looks like `https://formspree.io/f/abcdwxyz`.
-4. Paste it into `CONFIG.endpoint` and redeploy.
+### Reading the responses
 
-The free tier allows 50 submissions a month — enough for ten testers. Because the
-page submits with `fetch`, the tester never leaves the page and never sees
-Formspree branding; they just get the in-page thank-you.
+Once submissions land in Postgres, pull them with your `INGESTION_API_KEY`:
 
-**Alternatives that also work as a POST endpoint:** Airtable forms, Getform,
-Basin, Cloudflare Workers, or a Google Apps Script web app writing to a Sheet.
+```bash
+# every submission, newest first
+curl -H "X-Ingestion-Key: $INGESTION_API_KEY" \
+  https://your-api/api/v1/feedback?limit=100
+
+# per-question averages + response count (the number a founder reads first)
+curl -H "X-Ingestion-Key: $INGESTION_API_KEY" \
+  https://your-api/api/v1/feedback/summary
+```
+
+POST is public and rate-limited (20/hour per client); the read endpoints require
+the ingestion key. `POST /feedback` needs no CORS entry for the hosted page — the
+core API allows any origin for that one public endpoint.
 
 ---
 

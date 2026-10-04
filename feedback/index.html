@@ -561,12 +561,18 @@
        Configuration — set these two before you deploy.
        ------------------------------------------------------------------ */
     const CONFIG = {
-      // Preferred: a Formspree endpoint so responses land in a dashboard.
-      // Create one free at https://formspree.io (2 minutes) and paste it here,
-      // e.g. "https://formspree.io/f/abcdwxyz".
-      endpoint: "",
+      // Your DECODING JOBS core API public base URL, with NO trailing slash.
+      // Submissions POST to `${apiBase}/api/v1/feedback` and are stored in the
+      // project's own PostgreSQL — no third-party form service needed.
+      //
+      //   "http://localhost:8000"                  → local testing
+      //   "https://decoding-jobs-api.onrender.com" → deployed API (Render)
+      //
+      // Tip: append ?api=https://your-api to the page URL to override this
+      // without editing the file. Empty "" keeps the mailto fallback below.
+      apiBase: "",
 
-      // Used only when `endpoint` is empty: the feedback opens in the tester's
+      // Used only when `apiBase` is empty or a submission fails: the feedback opens in the tester's
       // own mail app addressed here. Change it to an inbox you actually read.
       fallbackEmail: "feedback@decodingjobs.app",
 
@@ -574,6 +580,13 @@
       // jump straight to what they are testing. Leave "" to hide it.
       appUrl: ""
     };
+
+    // Submissions POST to `${apiBase}/api/v1/feedback`; `?api=…` overrides for a
+    // quick test. With no base configured, `endpoint` stays empty and the page
+    // falls back to the mailto link (which does NOT capture anything).
+    const apiOverride = new URLSearchParams(location.search).get("api");
+    const API_BASE = (apiOverride || CONFIG.apiBase || "").replace(/\/$/, "");
+    CONFIG.endpoint = API_BASE ? API_BASE + "/api/v1/feedback" : "";
     /* ------------------------------------------------------------------ */
 
     const form = document.getElementById("feedback");

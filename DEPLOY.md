@@ -248,15 +248,33 @@ Two caveats worth knowing:
 ## Step 7 — Point the feedback page at the app
 
 Once the Vercel URL is live, open [feedback/index.html](feedback/index.html) and
-set the app URL in the `CONFIG` block so testers get an "Open the app →" button:
+set two things in the `CONFIG` block, then redeploy the feedback page:
 
 ```js
-appUrl: "https://your-app.vercel.app",
+apiBase: "https://your-api.onrender.com",   // your deployed core API
+appUrl: "https://your-app.vercel.app",      // shows the "Open the app →" button
 ```
 
-Also finish the two settings from [feedback/README.md](feedback/README.md):
-`endpoint` (your Formspree URL) and `fallbackEmail` (a real inbox — it's still a
-placeholder). Then redeploy the feedback page.
+`apiBase` is what makes submissions actually save — the page POSTs to
+`${apiBase}/api/v1/feedback` and the row lands in your database. With it empty,
+the page falls back to a mailto link and **nothing is captured** (this is what
+silently lost feedback before). See [feedback/README.md](feedback/README.md).
+
+### Get each submission emailed to you
+
+The API can email every submission to your inbox. On the **Render** service, set:
+
+| Env var | Value |
+| --- | --- |
+| `FEEDBACK_NOTIFY_EMAIL` | your inbox, e.g. `you@gmail.com` (comma-separate for several) |
+| `SENDGRID_API_KEY` | SendGrid *Mail Send* API key ([app.sendgrid.com](https://app.sendgrid.com) → Settings → API Keys) |
+| `SENDGRID_FROM_EMAIL` | a **verified** sender in SendGrid (Settings → Sender Authentication) |
+
+Then redeploy the API. The email is sent as a background task *after* the tester
+gets their thank-you, so a mail hiccup never blocks or breaks a submission — the
+row is always saved first, and you can also read every response through
+`GET /api/v1/feedback` (see the README). If SendGrid is unset, submissions are
+still stored; only the email is skipped.
 
 ---
 
@@ -287,7 +305,9 @@ catch localhost assumptions.
 | First request takes ~50s, then it's fast | Free tier cold start. Step 6. |
 | Sign-in fails with a Google origin error | The Vercel origin isn't in **Authorized JavaScript origins** yet (step 5), or it hasn't propagated. |
 | Env var change had no effect | `NEXT_PUBLIC_*` are build-time on Vercel — redeploy. Render needs a redeploy too. |
-| API logs `PRODUCTION without SENDGRID_API_KEY` | Expected and harmless here — it only means email magic links (and job-alert emails) are off. Google sign-in is unaffected. |
+| API logs `PRODUCTION without SENDGRID_API_KEY` | Expected and harmless here — it only means email magic links, job-alert emails, and feedback notifications are off. Google sign-in is unaffected. |
+| Feedback submissions save but no email arrives | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, and `FEEDBACK_NOTIFY_EMAIL` must all be set on the API, and the sender address must be verified in SendGrid. Check the API logs for `SendGrid send failed`. |
+| Feedback page says it sent but the DB is empty | `apiBase` on the feedback page is empty or wrong, so it fell back to mailto. Set it to your deployed API origin (no trailing slash) and redeploy the page. |
 | `docs` returns 404 | Intentional: `/docs` and `/redoc` are disabled when `ENVIRONMENT=production`. |
 | Build fails with `react/no-unescaped-entities` then `npm run build exited with 1` | You're building `main`, not `feat/updated-decode`. Set Branch Tracking as in step 4, then push to that branch. `main` is 25 commits behind and cannot build. |
 | Vercel shows "Install the GitHub application…" with no repos | Vercel's GitHub App isn't installed on the repo's account yet. Click Install → Only select repositories → pick this repo. |
