@@ -9,7 +9,7 @@
 # checked-out script can carry CRLF endings and fail with
 # "bad interpreter: /usr/bin/env bash^M" before it ever runs.
 #
-# Why a dump instead of the SQL files in infra/init-db: those 28 migrations have
+# Why a dump instead of the SQL files in infra/init-db: those 29 migrations have
 # already been applied to your local database, including the mojibake repair and
 # the seed-company deactivation. A hosted database will not auto-run them, and
 # replaying them by hand would still not reproduce the current state. A dump of
@@ -23,6 +23,13 @@
 # Windows as well as macOS/Linux.
 
 set -euo pipefail
+
+# Git Bash on Windows rewrites POSIX-looking arguments before Docker sees them,
+# so a container path like /tmp/dj-remote.dump silently becomes
+# C:/Users/.../tmp/dj-remote.dump and pg_dump fails to open it. Disable that
+# conversion so paths inside the container stay literal. Harmless on macOS/Linux.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
 
 usage() {
   cat >&2 <<'EOF'
@@ -148,6 +155,7 @@ if [[ $KEEP_LOCAL_USERS -eq 0 ]]; then
       applications,
       candidate_unlocks,
       email_events,
+      feedback_submissions,
       magic_link_tokens,
       resumes,
       saved_searches,
@@ -160,16 +168,21 @@ else
 fi
 
 echo "==> 6/6  Verifying"
+echo "    local:"
+docker exec "$LOCAL_CONTAINER" psql -U "$LOCAL_USER" -d "$LOCAL_DB" -c \
+  "SELECT
+     (SELECT count(*) FROM companies) AS companies,
+     (SELECT count(*) FROM jobs)      AS jobs;" | sed 's/^/    /'
+echo "    hosted:"
 docker exec "$LOCAL_CONTAINER" psql "$REMOTE_URL" -c \
   "SELECT
      (SELECT count(*) FROM companies) AS companies,
      (SELECT count(*) FROM jobs)      AS jobs,
-     (SELECT count(*) FROM users)     AS users;"
+     (SELECT count(*) FROM users)     AS users;" | sed 's/^/    /'
 
 cat <<'EOF'
 
-Expected: 3851 companies, 7570 jobs.
-
-If companies is 0, the restore failed — re-run and read step 4's output.
+The hosted company/job counts should match the local ones above. If companies
+is 0, the restore failed — re-run and read step 4's output.
 Next: set DATABASE_URL on the API host, then load the app and check the map.
 EOF
