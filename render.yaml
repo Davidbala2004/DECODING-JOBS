@@ -37,6 +37,15 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
+      # Powers /api/v1/chat (the AI Assistant). Without it the assistant answers
+      # "isn't configured yet" instead of searching jobs. Taken from
+      # services/core-api/.env.local locally; paste the same value here.
+      - key: GROQ_API_KEY
+        sync: false
+      # Optional: every feedback submission is emailed to this address.
+      # Comma-separate for several inboxes. Leave unset to skip the email.
+      - key: FEEDBACK_NOTIFY_EMAIL
+        sync: false
       # Gates /companies/seed, /jobs/seed and /jobs/expire-stale. Those write to
       # the live map, so leaving this unset closes them rather than opening them.
       - key: INGESTION_API_KEY

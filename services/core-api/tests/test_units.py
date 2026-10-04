@@ -18,6 +18,7 @@ from fastapi import HTTPException
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
 from app.core.ratelimit import enforce, reset  # noqa: E402
+from app.api import emails  # noqa: E402
 from app.api.alerts import _matches_filters  # noqa: E402
 from app.api.companies import PLACEHOLDER_COMPANY_NAMES  # noqa: E402
 from app.services.company_verification import extract_domain, verify_founder_domain  # noqa: E402
@@ -250,3 +251,95 @@ class TestPlaceholderCompanyNames:
     )
     def test_real_companies_are_not_flagged(self, name):
         assert name.strip().lower() not in PLACEHOLDER_COMPANY_NAMES
+
+
+# --------------------------------------------------------------------------- #
+# emails — inbound webhook auth
+# --------------------------------------------------------------------------- #
+
+
+class TestVerifyWebhookAuth:
+    """SendGrid Inbound Parse has no request signing, so this endpoint's whole
+    security is the Basic Auth check — and it must fail closed in production.
+
+    The regression these guard against: credentials-unset used to `return` and
+    let any anonymous caller POST, which on a deployed instance meant an
+    unauthenticated write (and, once GROQ_API_KEY is set, unauthenticated LLM
+    spend) reachable from the public internet.
+    """
+
+    @staticmethod
+    def _settings(monkeypatch, **overrides):
+        values = {
+            "ENVIRONMENT": "development",
+            "SENDGRID_INBOUND_USERNAME": None,
+            "SENDGRID_INBOUND_PASSWORD": None,
+        }
+        values.update(overrides)
+        monkeypatch.setattr(emails, "get_settings", lambda: SimpleNamespace(**values))
+
+    @staticmethod
+    def _creds(username="user", password="pass"):
+        return SimpleNamespace(username=username, password=password)
+
+    def test_production_without_credentials_is_rejected(self, monkeypatch):
+        self._settings(monkeypatch, ENVIRONMENT="production")
+        with pytest.raises(HTTPException) as exc:
+            emails._verify_webhook_auth(None)
+        assert exc.value.status_code == 401
+
+    def test_development_without_credentials_stays_testable(self, monkeypatch):
+        self._settings(monkeypatch, ENVIRONMENT="development")
+        emails._verify_webhook_auth(None)  # must not raise
+
+    def test_configured_rejects_missing_credentials(self, monkeypatch):
+        self._settings(
+            monkeypatch,
+            ENVIRONMENT="production",
+            SENDGRID_INBOUND_USERNAME="user",
+            SENDGRID_INBOUND_PASSWORD="pass",
+        )
+        with pytest.raises(HTTPException) as exc:
+            emails._verify_webhook_auth(None)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.parametrize(
+        "username,password",
+        [
+            ("user", "wrong"),
+            ("wrong", "pass"),
+            ("", ""),
+        ],
+    )
+    def test_configured_rejects_bad_credentials(self, monkeypatch, username, password):
+        self._settings(
+            monkeypatch,
+            ENVIRONMENT="production",
+            SENDGRID_INBOUND_USERNAME="user",
+            SENDGRID_INBOUND_PASSWORD="pass",
+        )
+        with pytest.raises(HTTPException) as exc:
+            emails._verify_webhook_auth(self._creds(username, password))
+        assert exc.value.status_code == 401
+
+    def test_configured_accepts_matching_credentials(self, monkeypatch):
+        self._settings(
+            monkeypatch,
+            ENVIRONMENT="production",
+            SENDGRID_INBOUND_USERNAME="user",
+            SENDGRID_INBOUND_PASSWORD="pass",
+        )
+        emails._verify_webhook_auth(self._creds("user", "pass"))  # must not raise
+
+    def test_inbound_route_is_rate_limited(self):
+        """This was the only public write route with no RateLimit dependency."""
+        inbound = next(r for r in emails.router.routes if r.path.endswith("/inbound"))
+        # FastAPI 0.115 stores the callable on Depends.dependency (older builds
+        # used .call), so accept either to keep this from rotting silently.
+        scopes = []
+        for dep in inbound.dependencies:
+            target = getattr(dep, "dependency", None) or getattr(dep, "call", None)
+            scope = getattr(target, "scope", None)
+            if scope:
+                scopes.append(scope)
+        assert "email-inbound" in scopes, f"expected email-inbound scope, got {scopes!r}"

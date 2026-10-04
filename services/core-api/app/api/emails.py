@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
+from app.core.ratelimit import RateLimit
 from app.core.security import require_session
 from app.db.session import get_db
 from app.models.domain import Application, ApplicationStatus, EmailEvent, Job, User
@@ -44,9 +45,26 @@ def _verify_webhook_auth(credentials: HTTPBasicCredentials | None) -> None:
     A plain `==` comparison leaks timing information proportional to how many
     leading characters match, which is enough to brute-force a secret one
     byte at a time — secrets.compare_digest runs in constant time regardless.
+
+    Unconfigured deployments stay open outside production so the webhook keeps
+    working with the curl example in the README. In production that would be an
+    unauthenticated write (and, with GROQ_API_KEY set, an LLM spend) endpoint on
+    the public internet, so it fails closed instead.
     """
     settings = get_settings()
     if not settings.SENDGRID_INBOUND_USERNAME or not settings.SENDGRID_INBOUND_PASSWORD:
+        if settings.ENVIRONMENT == "production":
+            logger.error(
+                "Rejecting inbound email: SENDGRID_INBOUND_USERNAME/PASSWORD are "
+                "unset in %s. Set them (or disable this route) — refusing to serve "
+                "an unauthenticated write endpoint.",
+                settings.ENVIRONMENT,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Webhook credentials are not configured",
+                headers={"WWW-Authenticate": "Basic"},
+            )
         # Not configured yet (no domain/SendGrid setup) — stays open so the
         # webhook remains testable via the curl example in the README.
         return
@@ -132,6 +150,9 @@ async def _find_matching_application(
     "/inbound",
     status_code=status.HTTP_200_OK,
     summary="SendGrid Inbound Parse webhook target — forwarded interview emails land here",
+    # Every other public route on this router is rate-limited; this one was not,
+    # and it is the only route that can spend LLM budget per request.
+    dependencies=[Depends(RateLimit(limit=30, window_seconds=3600, scope="email-inbound"))],
 )
 async def receive_inbound_email(
     db: Annotated[AsyncSession, Depends(get_db)],
