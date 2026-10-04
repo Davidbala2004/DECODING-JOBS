@@ -167,7 +167,8 @@ step 6 for how to stop that happening to your testers.
 >
 > Fix it before importing, or immediately after:
 > **Settings → Environments → Production → Branch Tracking** → enter
-> **`feat/updated-decode`** → **Save**.
+> **`final`** → **Save**. (This repo's production branch is **`final`** — every
+> other host below already tracks it.)
 >
 > That setting only governs *future* pushes, and it does not redeploy on its own.
 > You need one push to that branch to get a production deployment out of it.
@@ -294,6 +295,50 @@ catch localhost assumptions.
 
 ---
 
+## Rotating the Neon database password
+
+Do this whenever the password has been pasted anywhere — a chat, a ticket, a
+screenshot. The **old password keeps working until you reset it**, so run the
+two steps back to back; the only gap is one Render redeploy.
+
+1. Open both tabs first: [console.neon.tech](https://console.neon.tech) → your
+   project → **Roles** (or Settings → Passwords) → `neondb_owner`, and Render →
+   `decoding-jobs-api` → **Environment**.
+2. In Neon, reset the password and copy the new one.
+3. Immediately paste it into Render's `DATABASE_URL`, changing **only** the
+   password between `:` and `@`, then Save (Render redeploys on save):
+
+   ```
+   postgresql+asyncpg://neondb_owner:<NEW_PASSWORD>@ep-xxxxx.neon.tech/neondb?ssl=require
+   ```
+
+   Keep `+asyncpg`, the **direct** hostname (no `-pooler`), and `?ssl=require`.
+   Anything else in that string is deliberate.
+
+4. Confirm the API reconnected:
+
+   ```bash
+   curl -s https://decoding-jobs-api.onrender.com/health/db
+   ```
+
+The reset invalidates the old password everywhere at once, so local dev
+(`services/core-api/.env.local`, gitignored) needs the new value too.
+
+---
+
+## How a push becomes a deploy
+
+| Host | Tracks | Trigger |
+| --- | --- | --- |
+| Render (API) | `final` | GitHub webhook → Render **Deploy Hook** (`autoDeployTrigger: On Commit`) |
+| Vercel (frontend) | production branch | must be set to `final` in project settings — Vercel's API cannot change it, dashboard only |
+
+GitHub posts to the webhook on every push; Render then deploys the tip of the
+service's branch. The deploy-hook URL is a secret — reveal it in Render →
+Settings → Deploy Hook, and never commit it.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -309,7 +354,9 @@ catch localhost assumptions.
 | Feedback submissions save but no email arrives | `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, and `FEEDBACK_NOTIFY_EMAIL` must all be set on the API, and the sender address must be verified in SendGrid. Check the API logs for `SendGrid send failed`. |
 | Feedback page says it sent but the DB is empty | `apiBase` on the feedback page is empty or wrong, so it fell back to mailto. Set it to your deployed API origin (no trailing slash) and redeploy the page. |
 | `docs` returns 404 | Intentional: `/docs` and `/redoc` are disabled when `ENVIRONMENT=production`. |
-| Build fails with `react/no-unescaped-entities` then `npm run build exited with 1` | You're building `main`, not `feat/updated-decode`. Set Branch Tracking as in step 4, then push to that branch. `main` is 25 commits behind and cannot build. |
+| Build fails with `react/no-unescaped-entities` then `npm run build exited with 1` | You're building `main`, not `final`. Set the production branch to `final` as in step 4, then push to that branch. `main` is badly stale and cannot build. |
+| Pushes build a preview, production never updates | The production branch is still `main`. Settings → Environments → Production → Branch Tracking (or Settings → Git → Production Branch) → `final`, then push once — the setting only governs future pushes. |
+| Pushes to `final` don't reach Render | The GitHub webhook is missing (a repo rename/transfer can leave it behind). Re-create it under **Settings → Webhooks** pointing at the service's **Deploy Hook** URL from Render → Settings → Deploy Hook, event **push**. |
 | Vercel shows "Install the GitHub application…" with no repos | Vercel's GitHub App isn't installed on the repo's account yet. Click Install → Only select repositories → pick this repo. |
 
 ---
