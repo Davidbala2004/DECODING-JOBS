@@ -20,6 +20,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
+import { FeedbackButton } from "@/components/FeedbackButton";
 import { useIdentityStore } from "@/lib/identityStore";
 import { useLiveUpdatesStore } from "@/lib/liveUpdatesStore";
 import { getApplicationBoard, logout, logoutAllSessions } from "@/lib/api";
@@ -32,18 +33,24 @@ function NavLink({
   label,
   badge,
   active,
+  hideBelowSm = false,
 }: {
   href: string;
   icon: React.ElementType;
   label: string;
   badge?: number;
   active: boolean;
+  hideBelowSm?: boolean;
 }) {
   return (
     <Link
       href={href}
       className={cn(
-        "relative flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all sm:px-3",
+        "relative items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all sm:px-3",
+        // The bar is tuned to fit a 360px header exactly; anything added here
+        // at the base breakpoint overflows it. `hideBelowSm` retires a link on
+        // phones when the same destination is already reachable elsewhere.
+        hideBelowSm ? "hidden sm:flex" : "flex",
         active ? "text-green-700" : "text-gray-600 hover:bg-green-50 hover:text-green-700"
       )}
     >
@@ -334,7 +341,18 @@ export function TopNav() {
           active={pathname === "/tracker"}
         />
 
-        <NavLink href="/profile" icon={UserCog} label="Preferences" active={pathname === "/profile"} />
+        {/* Preferences is duplicated in the account menu below, so it yields
+            its slot on phones to the Feedback entry point without making
+            anything unreachable on mobile. */}
+        <NavLink
+          href="/profile"
+          icon={UserCog}
+          label="Preferences"
+          active={pathname === "/profile"}
+          hideBelowSm
+        />
+
+        <FeedbackButton />
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 

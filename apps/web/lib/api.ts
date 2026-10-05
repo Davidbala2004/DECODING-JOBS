@@ -333,6 +333,26 @@ export interface SessionResult {
   user: SessionUser;
 }
 
+/** Matches POST /api/v1/feedback — public, unauthenticated tester feedback.
+ * The API stores the note in Postgres and emails the owner's configured inbox
+ * (`FEEDBACK_NOTIFY_EMAIL`); it is rate-limited to 20 submissions per hour per
+ * client, so a rejection here means "slow down", not "broken". */
+export async function submitFeedback(payload: {
+  message: string;
+  email?: string;
+  name?: string;
+  page?: string;
+}): Promise<{ ok: boolean; id: number }> {
+  // The endpoint's free-text column is `anything`; the `page` value becomes the
+  // stored `source`, so in-app notes are distinguishable from the tester page.
+  return postJson("/api/v1/feedback", {
+    anything: payload.message,
+    email: payload.email || undefined,
+    name: payload.name || undefined,
+    page: payload.page ?? "in-app-feedback",
+  });
+}
+
 /** Matches POST /api/v1/auth/request-link — emails a one-time sign-in link.
  * `dev_magic_link` is only present when SENDGRID_API_KEY isn't configured
  * server-side, as a local-dev convenience. */

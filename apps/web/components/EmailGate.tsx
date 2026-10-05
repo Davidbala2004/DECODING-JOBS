@@ -49,6 +49,7 @@ export function EmailGate({
   const [email, setEmail] = useState("");
   const [linkSent, setLinkSent] = useState(false);
   const [devLink, setDevLink] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const googleMutation = useMutation({
     mutationFn: googleAuth,
@@ -59,8 +60,19 @@ export function EmailGate({
   const linkMutation = useMutation({
     mutationFn: () => requestMagicLink(email.trim()),
     onSuccess: (result) => {
-      setLinkSent(true);
-      setDevLink(result.dev_magic_link);
+      // The API reports whether the mail actually left (`sent`). In production
+      // with no SendGrid key configured it returns sent:false and no dev link —
+      // telling the tester "check your inbox" for a mail that was never sent is
+      // a dead end, so surface the real state instead.
+      if (result.sent || result.dev_magic_link) {
+        setLinkError(null);
+        setLinkSent(true);
+        setDevLink(result.dev_magic_link);
+      } else {
+        setLinkError(
+          "We couldn't email the sign-in link just now — email delivery isn't set up yet. Please try again later."
+        );
+      }
     },
   });
 
@@ -148,7 +160,7 @@ export function EmailGate({
         </div>
       ) : (
         <form
-          onSubmit={(e) => { e.preventDefault(); linkMutation.mutate(); }}
+          onSubmit={(e) => { e.preventDefault(); setLinkError(null); linkMutation.mutate(); }}
           className="flex w-full max-w-xs flex-col gap-2"
         >
           <Input
@@ -168,6 +180,9 @@ export function EmailGate({
           </button>
           {linkMutation.isError && (
             <p className="text-center text-xs text-red-500">{(linkMutation.error as Error).message}</p>
+          )}
+          {linkError && !linkMutation.isError && (
+            <p className="text-center text-xs text-red-500">{linkError}</p>
           )}
         </form>
       )}
