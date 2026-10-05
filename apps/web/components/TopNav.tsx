@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ListChecks,
-  Radio,
   Rocket,
   UserCog,
   Users2,
@@ -19,10 +18,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { useIdentityStore } from "@/lib/identityStore";
-import { useLiveUpdatesStore } from "@/lib/liveUpdatesStore";
 import { getApplicationBoard, logout, logoutAllSessions } from "@/lib/api";
 
 const LIVE_POLL_INTERVAL_MS = 15_000;
@@ -291,16 +288,16 @@ function AccountMenu() {
 export function TopNav() {
   const pathname = usePathname();
   const email = useIdentityStore((s) => s.email);
-  const liveUpdatesEnabled = useLiveUpdatesStore((s) => s.enabled);
-  const toggleLiveUpdates = useLiveUpdatesStore((s) => s.toggle);
 
   const { data: board } = useQuery({
     queryKey: ["applicationBoard", email],
     queryFn: () => getApplicationBoard(),
     enabled: !!email,
     // Only poll while the tracker is actually on screen — the badge doesn't
-    // need 15s freshness on the map, and a global poll is wasted load.
-    refetchInterval: liveUpdatesEnabled && pathname === "/tracker" ? LIVE_POLL_INTERVAL_MS : false,
+    // need 15s freshness on the map, and a global poll is wasted load. The
+    // live-updates switch that used to sit in the bar is gone; polling stays
+    // on by default (see lib/liveUpdatesStore, still read by KanbanBoard).
+    refetchInterval: pathname === "/tracker" ? LIVE_POLL_INTERVAL_MS : false,
   });
 
   return (
@@ -357,17 +354,6 @@ export function TopNav() {
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
         <ForCompaniesMenu active={pathname === "/register" || pathname === "/recruiters"} />
-
-        <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
-
-        <div className="flex items-center gap-1.5 pl-1" title={liveUpdatesEnabled ? "Live updates on — polling every 15s" : "Live updates off"}>
-          <Radio className={cn("hidden h-3.5 w-3.5 transition-colors sm:block", liveUpdatesEnabled ? "text-green-700" : "text-gray-500")} />
-          <Switch
-            checked={liveUpdatesEnabled}
-            onCheckedChange={toggleLiveUpdates}
-            aria-label="Toggle live tracker updates"
-          />
-        </div>
 
         <div className="mx-1 h-5 w-px bg-gray-200 sm:mx-2" />
 
