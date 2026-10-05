@@ -3,8 +3,23 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 
+// Share-card URLs (og:image, twitter:image) are resolved against
+// `metadataBase`. In production `NEXT_PUBLIC_SITE_URL` is not set, so the old
+// `?? "http://localhost:3333"` fallback baked a localhost URL into the shipped
+// HTML and every shared link previewed a broken image. Vercel injects
+// `VERCEL_URL` for every build, so prefer it before falling back to localhost.
+function resolveSiteUrl(): URL {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL);
+  }
+  if (process.env.VERCEL_URL) {
+    return new URL(`https://${process.env.VERCEL_URL}`);
+  }
+  return new URL("http://localhost:3333");
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3333"),
+  metadataBase: resolveSiteUrl(),
   title: "DECODING JOBS — Command Center",
   description: "High-speed, map-based job search command center for tech students.",
 };

@@ -22,5 +22,8 @@ scripts/package-lock.json
 # Docker / OS
 .DS_Store
 
+# Dev-server and build logs
+*.log
+
 # Database dumps produced by infra/deploy/seed-remote-db.sh
 *.dump
