@@ -1716,6 +1716,11 @@ export function MapWorkspace() {
               <div className="border-b border-gray-50 px-4 py-2.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Select City</span>
               </div>
+              {/* Capped and scrollable. The header plus a full city list is
+                  taller than a phone viewport, and the parent card's
+                  `overflow-hidden` used to clip every city below the fold —
+                  they could not be seen or tapped at all on mobile. */}
+              <div className="max-h-[55vh] overflow-y-auto scroll-thin">
               {(cities ?? []).map((c) => (
                 <button
                   key={c.city}
@@ -1747,6 +1752,7 @@ export function MapWorkspace() {
                   )}
                 </button>
               ))}
+              </div>
             </div>
           )}
         </div>
@@ -1989,7 +1995,7 @@ export function MapWorkspace() {
         <div className="absolute bottom-8 left-4 z-20 flex flex-col items-start gap-2">
           {legendOpen && (
             <div
-              className="w-60 rounded-xl border border-gray-100 bg-white/95 p-3.5 text-xs shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm"
+              className="scroll-thin max-h-[50vh] w-56 overflow-y-auto rounded-xl border border-gray-100 bg-white/95 p-3 text-[11px] shadow-[0_12px_40px_rgba(15,23,42,0.14)] backdrop-blur-sm sm:w-60 sm:p-3.5 sm:text-xs"
               style={{ animation: "fadeSlideUp 0.15s ease-out" }}
             >
               <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-gray-500">
